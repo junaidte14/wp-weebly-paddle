@@ -95,9 +95,8 @@ function wpwa_paddle_handle_oauth_callback($product) {
     $access_token = $token_response->access_token;
     $final_url = $token_response->callback_url ?? $callback_url;
     
-    $user_info = wpwa_paddle_get_weebly_user_info($access_token, $user_id);
-    $email = $user_info['email'] ?? '';
-    $name = $user_info['name'] ?? '';
+    $email = '';
+    $name = '';
     
     // Universal access check across all payment processors
     $access_check = wpwa_universal_user_has_access($user_id, $product['id'], $site_id);
@@ -138,23 +137,4 @@ function wpwa_paddle_handle_oauth_callback($product) {
     
     wp_redirect($session_result['checkout_url']);
     exit;
-}
-
-function wpwa_paddle_get_weebly_user_info($access_token, $user_id) {
-    $response = wp_remote_get("https://api.weebly.com/v1/user", array(
-        'headers' => array('X-Weebly-Access-Token' => $access_token),
-        'timeout' => 15
-    ));
-    
-    if (is_wp_error($response)) {
-        return array();
-    }
-    
-    $body = wp_remote_retrieve_body($response);
-    $data = json_decode($body, true);
-    
-    return array(
-        'email' => $data['email'] ?? '',
-        'name' => $data['name'] ?? ''
-    );
 }

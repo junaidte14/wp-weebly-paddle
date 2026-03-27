@@ -65,7 +65,7 @@ function wpwa_paddle_create_checkout_transaction($args) {
             'weebly_site_id' => $args['weebly_site_id'],
             'product_id' => $args['product_id'],
             'final_url' => $args['final_url'],
-            'access_token' => $args['access_token'], // encrypted already
+            'access_token' => $custom_data['access_token'],
             'status' => 'pending',
             'created_at' => current_time('mysql')
         ]);
@@ -125,34 +125,147 @@ function wpwa_paddle_render_checkout_page($txn_id) {
         wp_die('Transaction not found');
     }
 
+    // 🔥 Load settings
+    $sandbox_mode = wpwa_paddle_get_option('sandbox_mode') === 'yes';
+
+    $client_token = $sandbox_mode
+        ? wpwa_paddle_get_option('sandbox_client_token')
+        : wpwa_paddle_get_option('live_client_token');
+
+    $environment = $sandbox_mode ? 'sandbox' : 'production';
+
+    $price_id = wpwa_paddle_get_product($transaction['product_id'])['paddle_price_id'] ?? '';
+
     ?>
     <!DOCTYPE html>
     <html>
     <head>
         <title>Complete Your Payment</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
         <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+                background: #f5f7fb;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+            }
+
+            .card {
+                background: #fff;
+                padding: 40px;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+                max-width: 420px;
+                width: 100%;
+                text-align: center;
+            }
+
+            h2 {
+                margin-bottom: 10px;
+                color: #222;
+            }
+
+            p {
+                color: #666;
+                font-size: 14px;
+                margin-bottom: 25px;
+            }
+
+            .btn {
+                background: #635bff;
+                color: #fff;
+                border: none;
+                padding: 14px 20px;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+                width: 100%;
+                transition: 0.2s;
+            }
+
+            .btn:hover {
+                background: #5148e5;
+            }
+
+            .btn.loading {
+                opacity: 0.7;
+                pointer-events: none;
+            }
+
+            .loader {
+                margin-top: 15px;
+                font-size: 13px;
+                color: #888;
+                display: none;
+            }
+        </style>
     </head>
     <body>
-        <h2>Complete Your Payment</h2>
-        <p>Transaction ID: <?php echo esc_html($txn_id); ?></p>
 
-        <button id="payBtn">Pay Now</button>
+        <div class="card">
+            <h2>Complete Your Payment</h2>
+            <p>Secure checkout powered by Paddle</p>
+
+            <button id="payBtn" class="btn">Pay Now</button>
+
+            <div class="loader" id="loader">Opening secure checkout...</div>
+        </div>
 
         <script>
+            // 🔥 Set environment
+            Paddle.Environment.set("<?php echo esc_js($environment); ?>");
+
+            // 🔥 Init Paddle
             Paddle.Initialize({
-                token: "<?php echo esc_js(get_option('wpwa_paddle_client_token')); ?>"
+                token: "<?php echo esc_js($client_token); ?>",
+                eventCallback: function(event) {
+                    console.log("Paddle event:", event);
+                    // 🔥 Payment completed
+                    if (event.name === "checkout.completed") {
+                        window.location.href = "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=success&_ptxn=' . $txn_id)); ?>";
+                    }
+                }
             });
 
-            document.getElementById('payBtn').addEventListener('click', function () {
+            const btn = document.getElementById('payBtn');
+            const loader = document.getElementById('loader');
+
+            btn.addEventListener('click', function () {
+                btn.classList.add('loading');
+                loader.style.display = 'block';
+
                 Paddle.Checkout.open({
-                    transactionId: "<?php echo esc_js($txn_id); ?>",
+                    items: [{
+                        priceId: "<?php echo esc_js($price_id); ?>",
+                        quantity: 1
+                    }],
+
+                    // 🔥 Pass custom data again (important for webhook consistency)
+                    customData: {
+                        weebly_user_id: "<?php echo esc_js($transaction['weebly_user_id']); ?>",
+                        weebly_site_id: "<?php echo esc_js($transaction['weebly_site_id']); ?>",
+                        product_id: "<?php echo esc_js($transaction['product_id']); ?>",
+                        txn_ref: "<?php echo esc_js($txn_id); ?>"
+                    },
+
                     settings: {
-                        successUrl: "<?php echo esc_url(home_url('/wpwa-paddle-checkout?action=success&_ptxn=' . $txn_id)); ?>",
-                        closeUrl: "<?php echo esc_url(home_url('/wpwa-paddle-checkout?action=cancel')); ?>"
+                        displayMode: "overlay",
+                        theme: "light",
+                        locale: "en",
+
+                        successUrl: "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=success&_ptxn=' . $txn_id)); ?>",
+                        closeUrl: "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=cancel')); ?>"
                     }
                 });
             });
         </script>
+
     </body>
     </html>
     <?php

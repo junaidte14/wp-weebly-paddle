@@ -101,9 +101,6 @@ function wpwa_paddle_process_webhook_event($event) {
         case 'transaction.completed':
             return wpwa_paddle_handle_transaction_completed($data);
         
-        case 'transaction.paid':
-            return wpwa_paddle_handle_transaction_paid($data);
-        
         case 'subscription.created':
             return wpwa_paddle_handle_subscription_created($data);
         
@@ -167,18 +164,12 @@ function wpwa_paddle_handle_transaction_completed($transaction) {
         'metadata' => json_encode($custom_data)
     );
 
-    if ($existing) {
-        // ✅ UPDATE existing pending record
-        wpwa_paddle_log('Updating existing transaction', $transaction['id']);
-
-        wpwa_paddle_update_transaction_by_paddle_id($transaction['id'], $data);
-
-        $transaction_id = $existing['id'];
-
+    if ($existing && $existing['status'] === 'completed') {
+        wpwa_paddle_log('Skipping already completed transaction', $transaction['id']);
+        return ['success' => true, 'message' => 'Already processed'];
     } else {
         // ✅ FALLBACK (should rarely happen)
         wpwa_paddle_log('Creating new transaction from webhook', $transaction['id']);
-
         $transaction_id = wpwa_paddle_create_transaction($data);
     }
 
@@ -196,10 +187,6 @@ function wpwa_paddle_handle_transaction_completed($transaction) {
     }
 
     return array('success' => true, 'transaction_id' => $transaction_id);
-}
-
-function wpwa_paddle_handle_transaction_paid($transaction) {
-    return wpwa_paddle_handle_transaction_completed($transaction);
 }
 
 function wpwa_paddle_handle_subscription_created($subscription) {

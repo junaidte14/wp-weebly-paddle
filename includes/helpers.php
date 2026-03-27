@@ -95,6 +95,41 @@ function wpwa_paddle_install_tables() {
     
     dbDelta($sql_webhook);
     
+    $sql_whitelist = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}wpwa_paddle_whitelist` (
+      `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+      `weebly_user_id` VARCHAR(255) NOT NULL,
+      `product_id` BIGINT(20) UNSIGNED NOT NULL,
+      `granted_by` VARCHAR(255) NOT NULL,
+      `reason` TEXT DEFAULT NULL,
+      `expiry_date` DATETIME DEFAULT NULL,
+      `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+      `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (`id`),
+      KEY `idx_weebly_user` (`weebly_user_id`),
+      KEY `idx_product` (`product_id`),
+      KEY `idx_status` (`status`),
+      KEY `idx_expiry` (`expiry_date`)
+    ) $charset_collate;";
+    
+    dbDelta($sql_whitelist);
+    
+    $sql_access_log = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}wpwa_paddle_access_log` (
+      `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+      `weebly_user_id` VARCHAR(255) NOT NULL,
+      `weebly_site_id` VARCHAR(255) NOT NULL,
+      `product_id` BIGINT(20) UNSIGNED NOT NULL,
+      `access_source` VARCHAR(50) NOT NULL,
+      `granted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (`id`),
+      KEY `idx_user` (`weebly_user_id`),
+      KEY `idx_product` (`product_id`),
+      KEY `idx_source` (`access_source`),
+      KEY `idx_granted` (`granted_at`)
+    ) $charset_collate;";
+    
+    dbDelta($sql_access_log);
+    
     update_option('wpwa_paddle_db_version', WPWA_PADDLE_VERSION);
 }
 
