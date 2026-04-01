@@ -1,8 +1,14 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-require_once WPWA_PADDLE_DIR . '/lib/Util/HMAC.php';
-require_once WPWA_PADDLE_DIR . '/lib/Weebly/WeeblyClient.php';
+// Load dependencies safely
+if ( ! class_exists( 'HMAC' ) ) {
+    require_once WPWA_PADDLE_DIR . '/lib/Util/HMAC.php';
+}
+
+if ( ! class_exists( 'WeeblyClient' ) ) {
+    require_once WPWA_PADDLE_DIR . '/lib/Weebly/WeeblyClient.php';
+}
 
 function wpwa_paddle_handle_phase_one() {
     wpwa_paddle_log("Phase One Started", $_GET);

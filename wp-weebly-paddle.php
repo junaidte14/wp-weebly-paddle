@@ -27,6 +27,7 @@ require_once WPWA_PADDLE_DIR . '/includes/customers.php';
 require_once WPWA_PADDLE_DIR . '/includes/orders.php';
 require_once WPWA_PADDLE_DIR . '/includes/subscriptions.php';
 require_once WPWA_PADDLE_DIR . '/includes/access-control.php';
+require_once WPWA_PADDLE_DIR . '/includes/whitelist.php';
 
 // Paddle integration
 require_once WPWA_PADDLE_DIR . '/paddle/paddle-init.php';
@@ -44,6 +45,7 @@ if (is_admin()) {
     require_once WPWA_PADDLE_DIR . '/admin/subscriptions-page.php';
     require_once WPWA_PADDLE_DIR . '/admin/customers-page.php';
     require_once WPWA_PADDLE_DIR . '/admin/analytics-page.php';
+    require_once WPWA_PADDLE_DIR . '/admin/whitelist-page.php';
 }
 
 // Emails
@@ -117,6 +119,9 @@ function wpwa_paddle_admin_menu() {
     add_submenu_page('wpwa-paddle', __('Subscriptions', 'wpwa-paddle'), __('Subscriptions', 'wpwa-paddle'),
         'manage_options', 'wpwa-paddle-subscriptions', 'wpwa_paddle_render_subscriptions_page');
     
+    add_submenu_page('wpwa-paddle', __('Whitelist', 'wpwa-paddle'), __('Whitelist', 'wpwa-paddle'),
+        'manage_options', 'wpwa-paddle-whitelist', 'wpwa_paddle_render_whitelist_page');
+
     add_submenu_page('wpwa-paddle', __('Customers', 'wpwa-paddle'), __('Customers', 'wpwa-paddle'),
         'manage_options', 'wpwa-paddle-customers', 'wpwa_paddle_render_customers_page');
     

@@ -91,6 +91,31 @@ function wpwa_paddle_render_settings_page() {
                     </tr>
                 </table>
             </div>
+
+            <div class="wpwa-settings-section">
+                <h2>Whitelist Product Configuration</h2>
+                <p class="description">Configure the Paddle product/price used for whitelist purchases</p>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">Whitelist Product ID</th>
+                        <td>
+                            <input type="text" name="whitelist_product_id" 
+                                value="<?php echo esc_attr(wpwa_paddle_get_option('whitelist_product_id')); ?>" 
+                                class="regular-text">
+                            <p class="description">Paddle Product ID for whitelist purchases</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Whitelist Price ID</th>
+                        <td>
+                            <input type="text" name="whitelist_price_id" 
+                                value="<?php echo esc_attr(wpwa_paddle_get_option('whitelist_price_id')); ?>" 
+                                class="regular-text">
+                            <p class="description">Paddle Price ID for whitelist purchases</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
             
             <div class="wpwa-settings-section">
                 <h2>Live Credentials</h2>
@@ -161,4 +186,8 @@ function wpwa_paddle_save_settings() {
     wpwa_paddle_update_option('live_api_key', sanitize_text_field($_POST['live_api_key']));
     wpwa_paddle_update_option('live_client_token', sanitize_text_field($_POST['live_client_token']));
     wpwa_paddle_update_option('live_webhook_secret', sanitize_text_field($_POST['live_webhook_secret']));
+
+    wpwa_paddle_update_option('whitelist_product_id', sanitize_text_field($_POST['whitelist_product_id']));
+    wpwa_paddle_update_option('whitelist_price_id', sanitize_text_field($_POST['whitelist_price_id']));
+
 }

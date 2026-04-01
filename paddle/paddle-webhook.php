@@ -141,11 +141,15 @@ function wpwa_paddle_handle_transaction_completed($transaction) {
         return array('success' => true, 'message' => 'Ignored: Different app source');
     }
 
+    // Check if this is a whitelist purchase
+    if (isset($custom_data['purchase_type']) && $custom_data['purchase_type'] === 'whitelist') {
+        return wpwa_paddle_handle_whitelist_purchase($transaction, $custom_data);
+    }
+
     if (empty($custom_data['weebly_user_id']) || empty($custom_data['product_id'])) {
         return array('success' => false, 'message' => 'Missing custom data');
     }
 
-    // 🔥 CHECK EXISTING
     $existing = wpwa_paddle_get_transaction_by_paddle_id($transaction['id']);
 
     $data = array(
@@ -168,12 +172,10 @@ function wpwa_paddle_handle_transaction_completed($transaction) {
         wpwa_paddle_log('Skipping already completed transaction', $transaction['id']);
         return ['success' => true, 'message' => 'Already processed'];
     } else {
-        // ✅ FALLBACK (should rarely happen)
         wpwa_paddle_log('Creating new transaction from webhook', $transaction['id']);
         $transaction_id = wpwa_paddle_create_transaction($data);
     }
 
-    // Sync customer
     if ($transaction['customer_id'] && $custom_data['weebly_user_id']) {
         wpwa_paddle_sync_customer_from_paddle(
             $transaction['customer_id'],
@@ -181,12 +183,61 @@ function wpwa_paddle_handle_transaction_completed($transaction) {
         );
     }
 
-    // Email
     if ($transaction_id) {
         wpwa_paddle_send_confirmation_email($transaction_id);
     }
 
     return array('success' => true, 'transaction_id' => $transaction_id);
+}
+
+function wpwa_paddle_handle_whitelist_purchase($transaction, $custom_data) {
+    wpwa_paddle_log('Processing whitelist purchase', $custom_data);
+    
+    $weebly_user_id = $custom_data['weebly_user_id'] ?? '';
+    $target_product_id = $custom_data['target_product_id'] ?? 0;
+    
+    if (empty($weebly_user_id) || empty($target_product_id)) {
+        return array('success' => false, 'message' => 'Missing whitelist data');
+    }
+    
+    // Create whitelist entry
+    $whitelist_id = wpwa_paddle_create_whitelist_entry(array(
+        'weebly_user_id' => $weebly_user_id,
+        'product_id' => $target_product_id,
+        'granted_by' => 'paddle_purchase',
+        'reason' => 'Purchased via Paddle - Transaction: ' . $transaction['id'],
+        'expiry_date' => null, // Permanent access
+        'status' => 'active'
+    ));
+    
+    if (!$whitelist_id) {
+        return array('success' => false, 'message' => 'Failed to create whitelist entry');
+    }
+    
+    // Also create a transaction record for reporting
+    wpwa_paddle_create_transaction(array(
+        'transaction_type' => 'whitelist_purchase',
+        'paddle_transaction_id' => $transaction['id'],
+        'paddle_customer_id' => $transaction['customer_id'],
+        'weebly_user_id' => $weebly_user_id,
+        'weebly_site_id' => $custom_data['weebly_site_id'] ?? null,
+        'product_id' => $target_product_id,
+        'amount' => floatval($transaction['details']['totals']['total']) / 100,
+        'currency' => $transaction['currency_code'],
+        'status' => 'completed',
+        'metadata' => json_encode(array_merge($custom_data, array(
+            'whitelist_id' => $whitelist_id,
+            'purchase_type' => 'whitelist'
+        )))
+    ));
+    
+    wpwa_paddle_log('Whitelist entry created successfully', array(
+        'whitelist_id' => $whitelist_id,
+        'user_id' => $weebly_user_id,
+        'product_id' => $target_product_id
+    ));
+    
+    return array('success' => true, 'whitelist_id' => $whitelist_id);
 }
 
 function wpwa_paddle_handle_subscription_created($subscription) {

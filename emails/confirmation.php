@@ -26,7 +26,7 @@ function wpwa_paddle_send_confirmation_email($transaction_id) {
     
     $headers = array(
         'Content-Type: text/html; charset=UTF-8',
-        'From: Codoplex <sales@codoplex.com>',
+        'From: Codoplex <admin@codoplex.com>',
         'Cc: junaidte14@gmail.com'
     );
     
