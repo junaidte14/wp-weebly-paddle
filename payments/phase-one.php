@@ -75,7 +75,6 @@ function wpwa_paddle_initiate_oauth($product) {
         'site_id' => $_GET['site_id'] ?? '',
         'redirect_uri' => $redirect_uri,
         'state' => $state,
-        'version' => '1.0.4'
     ), '', '&', PHP_QUERY_RFC3986);
     
     wp_redirect($auth_url);

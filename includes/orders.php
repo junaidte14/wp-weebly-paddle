@@ -154,7 +154,7 @@ function wpwa_paddle_get_transaction_count($status = null) {
     return $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
 }
 
-function wpwa_paddle_get_total_revenue($status = 'completed') {
+function wpwa_paddle_get_total_revenue($status = 'succeeded') {
     global $wpdb;
     
     $table = $wpdb->prefix . 'wpwa_paddle_transactions';

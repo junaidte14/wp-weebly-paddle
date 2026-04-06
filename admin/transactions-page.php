@@ -44,9 +44,9 @@ function wpwa_paddle_render_transactions_page() {
     $total_count = wpwa_paddle_get_transaction_count($status_filter);
     $total_pages = ceil($total_count / $per_page);
     
-    $total_revenue = wpwa_paddle_get_total_revenue('completed');
+    $total_revenue = wpwa_paddle_get_total_revenue('succeeded');
     $total_transactions = wpwa_paddle_get_transaction_count();
-    $completed_count = wpwa_paddle_get_transaction_count('completed');
+    $completed_count = wpwa_paddle_get_transaction_count('succeeded');
     
     if (isset($_GET['weebly_status'])) {
         if ($_GET['weebly_status'] === 'success') {

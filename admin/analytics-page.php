@@ -6,7 +6,7 @@ function wpwa_paddle_render_analytics_page() {
         wp_die(__('Unauthorized', 'wpwa-paddle'));
     }
     
-    $total_revenue = wpwa_paddle_get_total_revenue('completed');
+    $total_revenue = wpwa_paddle_get_total_revenue('succeeded');
     $total_transactions = wpwa_paddle_get_transaction_count();
     $active_subscriptions = wpwa_paddle_get_active_subscriptions_count();
     $avg_value = $total_transactions > 0 ? $total_revenue / $total_transactions : 0;

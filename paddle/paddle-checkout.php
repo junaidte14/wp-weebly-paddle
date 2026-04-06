@@ -110,8 +110,6 @@ function wpwa_paddle_checkout_router() {
 }
 
 function wpwa_paddle_render_checkout_page($txn_id) {
-    wpwa_paddle_log("Rendering checkout page", $txn_id);
-
     global $wpdb;
     $table = $wpdb->prefix . 'wpwa_paddle_transactions';
 
@@ -121,150 +119,176 @@ function wpwa_paddle_render_checkout_page($txn_id) {
     ), ARRAY_A);
 
     if (!$transaction) {
-        wpwa_paddle_log("Transaction not found", $txn_id);
         wp_die('Transaction not found');
     }
 
-    // 🔥 Load settings
+    // 1. Fetch Product Data
+    $product = wpwa_paddle_get_product($transaction['product_id']);
+    $price_val = $product['price'] ?? 0.00;
+    $display_price = number_format($price_val, 2);
+    
+    $billing_text = 'one-time payment';
+    if (!empty($product['is_recurring'])) {
+        $unit = $product['cycle_unit'] ?? 'year';
+        $billing_text = 'per ' . $unit;
+    }
+
+    // 2. Settings & Identity
     $sandbox_mode = wpwa_paddle_get_option('sandbox_mode') === 'yes';
-
-    $client_token = $sandbox_mode
-        ? wpwa_paddle_get_option('sandbox_client_token')
-        : wpwa_paddle_get_option('live_client_token');
-
-    $environment = $sandbox_mode ? 'sandbox' : 'production';
-
-    $price_id = wpwa_paddle_get_product($transaction['product_id'])['paddle_price_id'] ?? '';
+    $client_token = $sandbox_mode ? wpwa_paddle_get_option('sandbox_client_token') : wpwa_paddle_get_option('live_client_token');
+    $environment  = $sandbox_mode ? 'sandbox' : 'production';
+    
+    $site_title = get_bloginfo('name');
+    $logo_url   = 'https://codoplex.com/wp-content/uploads/2022/05/cropped-Logo-Icon-300x300codoplex-300x300-1-100x100.png';
+    $upsell_url = 'https://codoplex.com/codoplex-weebly-apps-subscription/';
 
     ?>
     <!DOCTYPE html>
-    <html>
+    <html <?php language_attributes(); ?>>
     <head>
-        <title>Complete Your Payment</title>
+        <meta charset="UTF-8">
+        <title>Complete Your Purchase - <?php echo esc_html($site_title); ?></title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-
         <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
-
+        
         <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
-                background: #f5f7fb;
-                margin: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-            }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+            .wpwa-checkout-page { padding: 60px 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box; }
+            .checkout-container { background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); max-width: 480px; width: 100%; border: 1px solid #e2e8f0; overflow: hidden; }
+            
+            /* Header */
+            .card-header { padding: 25px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+            .card-header img { max-height: 50px; margin-bottom: 10px; }
+            .card-header h2 { margin: 0; font-size: 16px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; }
 
-            .card {
-                background: #fff;
-                padding: 40px;
-                border-radius: 12px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-                max-width: 420px;
-                width: 100%;
-                text-align: center;
-            }
+            /* Body */
+            .card-body { padding: 30px; text-align: center; }
+            .product-badge { background: #e0e7ff; color: #4338ca; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; display: inline-block; }
+            .card-body h1 { margin: 10px 0; font-size: 26px; color: #1e293b; font-weight: 800; }
+            
+            /* Pricing */
+            .price-container { margin: 20px 0 30px 0; }
+            .price-amount { font-size: 48px; font-weight: 800; color: #10b981; display: block; line-height: 1; }
+            .price-currency { font-size: 20px; vertical-align: top; margin-right: 2px; position: relative; top: 8px; }
+            .price-period { font-size: 14px; color: #94a3b8; font-weight: 500; margin-top: 8px; display: block; }
 
-            h2 {
-                margin-bottom: 10px;
-                color: #222;
-            }
+            /* Info Box */
+            .details-box { background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 10px; padding: 18px; margin-bottom: 25px; text-align: left; }
+            .details-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+            .details-row:last-child { margin-bottom: 0; }
+            .details-row label { color: #94a3b8; font-weight: 500; }
+            .details-row span { color: #1e293b; font-family: 'Courier New', monospace; font-weight: 600; }
 
-            p {
-                color: #666;
-                font-size: 14px;
-                margin-bottom: 25px;
-            }
+            /* Buttons */
+            .btn-paddle { display: block; width: 100%; background: #6366f1; color: white; border: none; padding: 18px; border-radius: 10px; font-weight: 700; font-size: 18px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+            .btn-paddle:hover { background: #4f46e5; transform: translateY(-1px); }
+            .btn-paddle:active { transform: translateY(0); }
+            .btn-paddle.loading { opacity: 0.7; pointer-events: none; }
 
-            .btn {
-                background: #635bff;
-                color: #fff;
-                border: none;
-                padding: 14px 20px;
-                border-radius: 8px;
-                font-size: 16px;
-                cursor: pointer;
-                width: 100%;
-                transition: 0.2s;
-            }
+            .btn-upsell { display: block; color: #6366f1; text-decoration: none; padding: 12px; font-weight: 600; margin-top: 15px; font-size: 14px; border: 1px dashed #cbd5e1; border-radius: 8px; }
+            .btn-upsell:hover { background: #f5f7ff; border-color: #6366f1; }
 
-            .btn:hover {
-                background: #5148e5;
-            }
-
-            .btn.loading {
-                opacity: 0.7;
-                pointer-events: none;
-            }
-
-            .loader {
-                margin-top: 15px;
-                font-size: 13px;
-                color: #888;
-                display: none;
-            }
+            /* Footer */
+            .card-footer { background: #f8fafc; padding: 20px; border-top: 1px solid #f1f5f9; text-align: center; }
+            .footer-links a { font-size: 12px; color: #94a3b8; text-decoration: none; margin: 0 10px; }
+            .footer-links a:hover { color: #6366f1; }
+            .copyright { font-size: 11px; color: #cbd5e1; margin-top: 15px; }
         </style>
     </head>
     <body>
 
-        <div class="card">
-            <h2>Complete Your Payment</h2>
-            <p>Secure checkout powered by Paddle</p>
+    <div class="wpwa-checkout-page">
+        <div class="checkout-container">
+            <div class="card-header">
+                <?php if ($logo_url): ?>
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="Logo">
+                <?php endif; ?>
+                <h2><?php echo esc_html($site_title); ?></h2>
+            </div>
 
-            <button id="payBtn" class="btn">Pay Now</button>
+            <div class="card-body">
+                <div class="product-badge">Confirm Secure Checkout</div>
+                <h1><?php echo esc_html($product['name'] ?? 'Product Selection'); ?></h1>
+                
+                <div class="price-container">
+                    <span class="price-amount">
+                        <span class="price-currency">$</span><?php echo esc_html($display_price); ?>
+                    </span>
+                    <span class="price-period"><?php echo esc_html($billing_text); ?></span>
+                </div>
 
-            <div class="loader" id="loader">Opening secure checkout...</div>
+                <div class="details-box">
+                    <div class="details-row">
+                        <label>User ID</label>
+                        <span><?php echo esc_html($transaction['weebly_user_id']); ?></span>
+                    </div>
+                    <div class="details-row">
+                        <label>Site ID</label>
+                        <span><?php echo esc_html($transaction['weebly_site_id']); ?></span>
+                    </div>
+                </div>
+
+                <button id="payBtn" class="btn-paddle">Proceed to Secure Payment →</button>
+
+                <a href="<?php echo esc_url($upsell_url); ?>" target="_blank" class="btn-upsell">
+                    🚀 Upgrade to All-in-One Whitelist
+                </a>
+            </div>
+
+            <div class="card-footer">
+                <div class="footer-links">
+                    <a href="https://codoplex.com/privacy-policy/" target="_blank">Privacy</a>
+                    <a href="https://codoplex.com/terms-and-conditions/" target="_blank">Terms</a>
+                    <a href="https://codoplex.com/refund-policy/" target="_blank">Refunds</a>
+                    <a href="https://codoplex.com/contact/" target="_blank">Contact</a>
+                </div>
+                <p class="copyright">© <?php echo date('Y'); ?> Codoplex. All rights reserved.</p>
+            </div>
         </div>
+    </div>
 
-        <script>
-            // 🔥 Set environment
-            Paddle.Environment.set("<?php echo esc_js($environment); ?>");
+    <script>
+        Paddle.Environment.set("<?php echo esc_js($environment); ?>");
+        Paddle.Initialize({
+            token: "<?php echo esc_js($client_token); ?>",
+            eventCallback: function(event) {
+                if (event.name === "checkout.completed") {
+                    window.location.href = "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=success&_ptxn=' . $txn_id)); ?>";
+                }
+            }
+        });
 
-            // 🔥 Init Paddle
-            Paddle.Initialize({
-                token: "<?php echo esc_js($client_token); ?>",
-                eventCallback: function(event) {
-                    console.log("Paddle event:", event);
-                    // 🔥 Payment completed
-                    if (event.name === "checkout.completed") {
-                        window.location.href = "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=success&_ptxn=' . $txn_id)); ?>";
-                    }
+        const btn = document.getElementById('payBtn');
+        btn.addEventListener('click', function () {
+            btn.classList.add('loading');
+            btn.innerText = "Opening Checkout...";
+
+            Paddle.Checkout.open({
+                items: [{
+                    priceId: "<?php echo esc_js($product['paddle_price_id']); ?>",
+                    quantity: 1
+                }],
+                customData: {
+                    weebly_user_id: "<?php echo esc_js($transaction['weebly_user_id']); ?>",
+                    weebly_site_id: "<?php echo esc_js($transaction['weebly_site_id']); ?>",
+                    product_id: "<?php echo esc_js($transaction['product_id']); ?>",
+                    txn_ref: "<?php echo esc_js($txn_id); ?>"
+                },
+                settings: {
+                    displayMode: "overlay",
+                    theme: "light",
+                    locale: "en",
+                    successUrl: "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=success&_ptxn=' . $txn_id)); ?>"
                 }
             });
-
-            const btn = document.getElementById('payBtn');
-            const loader = document.getElementById('loader');
-
-            btn.addEventListener('click', function () {
-                btn.classList.add('loading');
-                loader.style.display = 'block';
-
-                Paddle.Checkout.open({
-                    items: [{
-                        priceId: "<?php echo esc_js($price_id); ?>",
-                        quantity: 1
-                    }],
-
-                    // 🔥 Pass custom data again (important for webhook consistency)
-                    customData: {
-                        weebly_user_id: "<?php echo esc_js($transaction['weebly_user_id']); ?>",
-                        weebly_site_id: "<?php echo esc_js($transaction['weebly_site_id']); ?>",
-                        product_id: "<?php echo esc_js($transaction['product_id']); ?>",
-                        txn_ref: "<?php echo esc_js($txn_id); ?>"
-                    },
-
-                    settings: {
-                        displayMode: "overlay",
-                        theme: "light",
-                        locale: "en",
-
-                        successUrl: "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=success&_ptxn=' . $txn_id)); ?>",
-                        closeUrl: "<?php echo esc_url_raw(home_url('/wpwa-paddle-checkout?action=cancel')); ?>"
-                    }
-                });
-            });
-        </script>
+            
+            // Re-enable button if user closes overlay without finishing
+            setTimeout(() => {
+                btn.classList.remove('loading');
+                btn.innerText = "Proceed to Secure Payment →";
+            }, 5000);
+        });
+    </script>
 
     </body>
     </html>

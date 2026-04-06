@@ -9,14 +9,6 @@ function wpwa_universal_user_has_access($weebly_user_id, $product_id, $site_id =
         return $whitelist_check;
     }
     
-    // If Stripe plugin exists, check its whitelist
-    if (function_exists('wpwa_check_whitelist_access')) {
-        $stripe_whitelist = wpwa_check_whitelist_access($weebly_user_id, $product_id, $site_id);
-        if ($stripe_whitelist['has_access']) {
-            return $stripe_whitelist;
-        }
-    }
-    
     // Priority 2: Active Paddle subscription
     $paddle_sub_check = wpwa_paddle_check_subscription_access($weebly_user_id, $product_id, $site_id);
     if ($paddle_sub_check['has_access']) {
@@ -27,21 +19,6 @@ function wpwa_universal_user_has_access($weebly_user_id, $product_id, $site_id =
     $paddle_purchase_check = wpwa_paddle_check_purchase_access($weebly_user_id, $product_id, $site_id);
     if ($paddle_purchase_check['has_access']) {
         return $paddle_purchase_check;
-    }
-    
-    // Priority 4: Check Stripe if plugin exists
-    if (function_exists('wpwa_check_stripe_subscription_access')) {
-        $stripe_sub_check = wpwa_check_stripe_subscription_access($weebly_user_id, $product_id, $site_id);
-        if ($stripe_sub_check['has_access']) {
-            return $stripe_sub_check;
-        }
-    }
-    
-    if (function_exists('wpwa_check_stripe_purchase_access')) {
-        $stripe_purchase_check = wpwa_check_stripe_purchase_access($weebly_user_id, $product_id, $site_id);
-        if ($stripe_purchase_check['has_access']) {
-            return $stripe_purchase_check;
-        }
     }
     
     // Priority 5: Check Legacy WooCommerce if tables exist
@@ -251,15 +228,6 @@ function wpwa_paddle_update_user_access_token($weebly_user_id, $weebly_site_id, 
             }
             break;
             
-        // If Stripe functions exist, call them
-        case 'stripe_subscription':
-        case 'stripe_purchase':
-            if (function_exists('wpwa_update_user_access_token')) {
-                wpwa_update_user_access_token($weebly_user_id, $weebly_site_id, $product_id, $access_token, $source);
-            }
-            break;
-            
-        case 'whitelist':
         case 'paddle_whitelist':
             // Whitelist doesn't need token update
             break;
@@ -301,11 +269,8 @@ function wpwa_paddle_get_user_access_summary($weebly_user_id, $product_id, $site
     
     $labels = array(
         'paddle_whitelist' => '🎁 Whitelisted (Paddle)',
-        'whitelist' => '🎁 Whitelisted (Stripe)',
         'paddle_subscription' => '🔄 Active Subscription (Paddle)',
         'paddle_purchase' => '💳 Purchased (Paddle)',
-        'stripe_subscription' => '🔄 Active Subscription (Stripe)',
-        'stripe_purchase' => '💳 Purchased (Stripe)',
         'woocommerce_lifetime' => '⭐ Lifetime Access (Legacy WC)'
     );
     
