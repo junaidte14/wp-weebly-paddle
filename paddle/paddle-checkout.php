@@ -140,7 +140,7 @@ function wpwa_paddle_render_checkout_page($txn_id) {
     
     $site_title = get_bloginfo('name');
     $logo_url   = 'https://codoplex.com/wp-content/uploads/2022/05/cropped-Logo-Icon-300x300codoplex-300x300-1-100x100.png';
-    $upsell_url = 'https://codoplex.com/codoplex-weebly-apps-subscription/';
+    $upsell_url = 'https://codoplex.com/get-weebly-apps-subscription/';
 
     ?>
     <!DOCTYPE html>
@@ -230,7 +230,7 @@ function wpwa_paddle_render_checkout_page($txn_id) {
 
                 <button id="payBtn" class="btn-paddle">Proceed to Secure Payment →</button>
 
-                <a href="<?php echo esc_url($upsell_url); ?>" target="_blank" class="btn-upsell">
+                <a href="<?php echo esc_url($upsell_url . '?user_id=' . $transaction['weebly_user_id'] . '&site_id=' . $transaction['weebly_site_id']); ?>" target="_blank" class="btn-upsell">
                     🚀 Upgrade to All-in-One Whitelist
                 </a>
             </div>

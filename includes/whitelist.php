@@ -7,7 +7,7 @@ add_shortcode('wpwa_paddle_whitelist_checkout', 'wpwa_paddle_whitelist_checkout_
 function wpwa_paddle_whitelist_checkout_shortcode($atts) {
     $atts = shortcode_atts(array(
         'button_text' => 'Purchase Whitelist Access',
-        'success_url' => home_url('/whitelist-success/'),
+        'success_url' => home_url('/get-weebly-apps-subscription/'),
         'title' => 'Get Unlimited Access'
     ), $atts);
     
@@ -15,7 +15,9 @@ function wpwa_paddle_whitelist_checkout_shortcode($atts) {
     $weebly_user_id = isset($_GET['user_id']) ? sanitize_text_field($_GET['user_id']) : 'not_provided';
     $weebly_site_id = isset($_GET['site_id']) ? sanitize_text_field($_GET['site_id']) : 'not_provided';
     $product_id = isset($_GET['product_id']) ? absint($_GET['product_id']) : 0;
-    
+    $sandbox_mode = wpwa_paddle_get_option('sandbox_mode') === 'yes';
+    $environment  = $sandbox_mode ? 'sandbox' : 'production';
+
     /* if (empty($weebly_user_id)) {
         return '<div class="wpwa-paddle-error">Missing user_id parameter</div>';
     }
@@ -43,7 +45,7 @@ function wpwa_paddle_whitelist_checkout_shortcode($atts) {
     <div class="wpwa-paddle-whitelist-checkout" id="wpwa-paddle-whitelist-checkout">
         <div class="wpwa-whitelist-card">
             <h2><?php echo esc_html($atts['title']); ?></h2>
-            <p>Get permanent access to or 17 Weebly apps for your Weebly site.</p>
+            <p>Get permanent access to our 17 Weebly apps for your Weebly site.</p>
             
             <div class="wpwa-whitelist-details">
                 <div class="detail-row">
@@ -168,10 +170,28 @@ function wpwa_paddle_whitelist_checkout_shortcode($atts) {
             console.error('Paddle client token not configured');
             return;
         }
-        
+        Paddle.Environment.set("<?php echo esc_js($environment); ?>");
         Paddle.Initialize({
             token: clientToken,
-            environment: isSandbox ? 'sandbox' : 'production'
+            eventCallback: function(event) {
+                if (event.name === "checkout.completed") {
+                    const productCards = document.querySelectorAll('.wpwa-whitelist-card');
+                    productCards.forEach(card => {
+                        card.innerHTML = `
+                            <div style='background: #ffffff; border: 2px solid #0073aa; padding: 40px 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>
+                                <div style='font-size: 50px; margin-bottom: 15px;'>✅</div>
+                                <h2 style='color: #0073aa; margin-bottom: 10px;'>Purchase Complete!</h2>
+                                <p style='font-size: 18px; color: #333; margin-bottom: 20px;'>
+                                    The <strong>Weebly Apps Subscription</strong> is being activated and the details will be sent at your email address.
+                                </p>
+                                <p style='font-size: 14px; color: #666; max-width: 300px; margin: 0 auto;'>
+                                    Please check your inbox. If you don't see it within 5 minutes, remember to check your spam folder.
+                                </p>
+                            </div>
+                        `;
+                    });
+                }
+            }
         });
         
         const btn = document.getElementById('wpwa-paddle-whitelist-btn');
