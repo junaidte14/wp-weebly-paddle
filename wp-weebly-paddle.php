@@ -37,6 +37,9 @@ require_once WPWA_PADDLE_DIR . '/paddle/paddle-checkout.php';
 require_once WPWA_PADDLE_DIR . '/paddle/paddle-subscriptions.php';
 require_once WPWA_PADDLE_DIR . '/paddle/paddle-webhook.php';
 
+// Stripe integration
+require_once WPWA_PADDLE_DIR . '/stripe/stripe-init.php';
+
 // Admin
 if (is_admin()) {
     require_once WPWA_PADDLE_DIR . '/admin/admin-enqueue.php';

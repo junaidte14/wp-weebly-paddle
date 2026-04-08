@@ -194,3 +194,52 @@ function wpwa_paddle_decrypt_token($encrypted) {
     $decrypted = openssl_decrypt(base64_decode($encrypted), $cipher, $key, 0, $iv);
     return $decrypted ?: '';
 }
+
+// Stripe Integration
+/**
+ * Get option with default
+ */
+function wpwa_stripe_get_option($key, $default = '') {
+    return get_option('wpwa_stripe_' . $key, $default);
+}
+
+/**
+ * Update option
+ */
+function wpwa_stripe_update_option($key, $value) {
+    return update_option('wpwa_stripe_' . $key, $value);
+}
+
+/**
+ * Check if Stripe is enabled
+ */
+function wpwa_stripe_is_enabled() {
+    return wpwa_stripe_get_option('enabled') === 'yes';
+}
+
+/**
+ * Check if in test mode
+ */
+function wpwa_stripe_is_test_mode() {
+    return wpwa_stripe_get_option('test_mode') === 'yes';
+}
+
+/**
+ * Get Stripe API key
+ */
+function wpwa_stripe_get_api_key() {
+    if (wpwa_stripe_is_test_mode()) {
+        return wpwa_stripe_get_option('test_secret_key');
+    }
+    return wpwa_stripe_get_option('live_secret_key');
+}
+
+/**
+ * Get Stripe publishable key
+ */
+function wpwa_stripe_get_publishable_key() {
+    if (wpwa_stripe_is_test_mode()) {
+        return wpwa_stripe_get_option('test_publishable_key');
+    }
+    return wpwa_stripe_get_option('live_publishable_key');
+}
