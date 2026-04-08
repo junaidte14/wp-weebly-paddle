@@ -153,21 +153,21 @@ function wpwa_paddle_render_checkout_page($txn_id) {
         
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f8fafc; margin: 0; padding: 0; }
-            .wpwa-checkout-page { padding: 60px 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box; }
+            .wpwa-checkout-page { padding: 2px 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box; }
             .checkout-container { background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); max-width: 480px; width: 100%; border: 1px solid #e2e8f0; overflow: hidden; }
             
             /* Header */
-            .card-header { padding: 25px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+            .card-header { padding: 5px; border-bottom: 1px solid #f1f5f9; text-align: center; }
             .card-header img { max-height: 50px; margin-bottom: 10px; }
             .card-header h2 { margin: 0; font-size: 16px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; }
 
             /* Body */
-            .card-body { padding: 30px; text-align: center; }
-            .product-badge { background: #e0e7ff; color: #4338ca; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; display: inline-block; }
+            .card-body { padding: 5px 30px; text-align: center; }
+            .product-badge { background: #e0e7ff; color: #4338ca; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
             .card-body h1 { margin: 10px 0; font-size: 26px; color: #1e293b; font-weight: 800; }
             
             /* Pricing */
-            .price-container { margin: 20px 0 30px 0; }
+            .price-container { margin: 5px 0 20px 0; }
             .price-amount { font-size: 48px; font-weight: 800; color: #10b981; display: block; line-height: 1; }
             .price-currency { font-size: 20px; vertical-align: top; margin-right: 2px; position: relative; top: 8px; }
             .price-period { font-size: 14px; color: #94a3b8; font-weight: 500; margin-top: 8px; display: block; }

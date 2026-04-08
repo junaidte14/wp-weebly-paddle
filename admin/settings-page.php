@@ -22,18 +22,6 @@ function wpwa_paddle_render_settings_page() {
     $live_webhook_secret = wpwa_paddle_get_option('live_webhook_secret');
     
     $webhook_url = home_url('/wpwa-paddle-webhook/');
-
-    //Stripe Integration
-    $stripe_enabled = wpwa_stripe_get_option('enabled', 'no');
-    $stripe_test_mode = wpwa_stripe_get_option('test_mode', 'yes');
-    $stripe_test_pub_key = wpwa_stripe_get_option('test_publishable_key');
-    $stripe_test_secret_key = wpwa_stripe_get_option('test_secret_key');
-    $stripe_test_webhook_secret = wpwa_stripe_get_option('test_webhook_secret');
-    $stripe_live_pub_key = wpwa_stripe_get_option('live_publishable_key');
-    $stripe_live_secret_key = wpwa_stripe_get_option('live_secret_key');
-    $stripe_live_webhook_secret = wpwa_stripe_get_option('live_webhook_secret');
-    
-    $stripe_webhook_url = home_url('/wpwa-stripe-webhook/');
     ?>
     <div class="wrap wpwa-paddle-wrap">
         <h1>
@@ -159,117 +147,6 @@ function wpwa_paddle_render_settings_page() {
                     </tr>
                 </table>
             </div>
-
-            <h1>Stripe Settings</h1>
-            <hr>
-            <!-- Enable/Disable -->
-            <div class="wpwa-settings-section">
-                <h2>General Settings</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Enable Stripe</th>
-                        <td>
-                            <label>
-                                <input type="checkbox" name="stripe_enabled" value="yes" <?php checked($stripe_enabled, 'yes'); ?>>
-                                Enable Stripe payment processing
-                            </label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Test Mode</th>
-                        <td>
-                            <label>
-                                <input type="checkbox" name="stripe_test_mode" value="yes" <?php checked($stripe_test_mode, 'yes'); ?>>
-                                Enable test mode (use test API keys)
-                            </label>
-                            <p class="description">Use test mode for development and testing. Disable for live payments.</p>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            
-            <!-- Test Keys -->
-            <div class="wpwa-settings-section">
-                <h2>Test API Keys</h2>
-                <p class="description">Get your test keys from <a href="https://dashboard.stripe.com/test/apikeys" target="_blank">Stripe Dashboard (Test Mode)</a></p>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="stripe_test_publishable_key">Publishable Key</label>
-                        </th>
-                        <td>
-                            <input type="text" id="stripe_test_publishable_key" name="stripe_test_publishable_key" 
-                                   value="<?php echo esc_attr($stripe_test_pub_key); ?>" 
-                                   class="regular-text code" placeholder="pk_test_...">
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="stripe_test_secret_key">Secret Key</label>
-                        </th>
-                        <td>
-                            <input type="password" id="stripe_test_secret_key" name="stripe_test_secret_key" 
-                                   value="<?php echo esc_attr($stripe_test_secret_key); ?>" 
-                                   class="regular-text code" placeholder="sk_test_...">
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="stripe_test_webhook_secret">Webhook Secret</label>
-                        </th>
-                        <td>
-                            <input type="password" id="stripe_test_webhook_secret" name="stripe_test_webhook_secret" 
-                                   value="<?php echo esc_attr($stripe_test_webhook_secret); ?>" 
-                                   class="regular-text code" placeholder="whsec_...">
-                            <p class="description">
-                                Webhook URL: <code><?php echo esc_html($stripe_webhook_url); ?></code>
-                                <button type="button" class="button button-small" onclick="navigator.clipboard.writeText('<?php echo esc_js($stripe_webhook_url); ?>')">Copy</button>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            
-            <!-- Live Keys -->
-            <div class="wpwa-settings-section">
-                <h2>Live API Keys</h2>
-                <p class="description">Get your live keys from <a href="https://dashboard.stripe.com/apikeys" target="_blank">Stripe Dashboard (Live Mode)</a></p>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="stripe_live_publishable_key">Publishable Key</label>
-                        </th>
-                        <td>
-                            <input type="text" id="stripe_live_publishable_key" name="stripe_live_publishable_key" 
-                                   value="<?php echo esc_attr($stripe_live_pub_key); ?>" 
-                                   class="regular-text code" placeholder="pk_live_...">
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="stripe_live_secret_key">Secret Key</label>
-                        </th>
-                        <td>
-                            <input type="password" id="stripe_live_secret_key" name="stripe_live_secret_key" 
-                                   value="<?php echo esc_attr($stripe_live_secret_key); ?>" 
-                                   class="regular-text code" placeholder="sk_live_...">
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="stripe_live_webhook_secret">Webhook Secret</label>
-                        </th>
-                        <td>
-                            <input type="password" id="stripe_live_webhook_secret" name="stripe_live_webhook_secret" 
-                                   value="<?php echo esc_attr($stripe_live_webhook_secret); ?>" 
-                                   class="regular-text code" placeholder="whsec_...">
-                            <p class="description">
-                                Webhook URL: <code><?php echo esc_html($stripe_webhook_url); ?></code>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </div>
             
             <p class="submit">
                 <input type="submit" class="button button-primary" value="Save Settings">
@@ -312,17 +189,5 @@ function wpwa_paddle_save_settings() {
 
     wpwa_paddle_update_option('whitelist_product_id', sanitize_text_field($_POST['whitelist_product_id']));
     wpwa_paddle_update_option('whitelist_price_id', sanitize_text_field($_POST['whitelist_price_id']));
-
-    wpwa_stripe_update_option('enabled', isset($_POST['stripe_enabled']) ? 'yes' : 'no');
-    wpwa_stripe_update_option('test_mode', isset($_POST['stripe_test_mode']) ? 'yes' : 'no');
-    
-    wpwa_stripe_update_option('test_publishable_key', sanitize_text_field($_POST['stripe_test_publishable_key']));
-    wpwa_stripe_update_option('test_secret_key', sanitize_text_field($_POST['stripe_test_secret_key']));
-    wpwa_stripe_update_option('test_webhook_secret', sanitize_text_field($_POST['stripe_test_webhook_secret']));
-    
-    wpwa_stripe_update_option('live_publishable_key', sanitize_text_field($_POST['stripe_live_publishable_key']));
-    wpwa_stripe_update_option('live_secret_key', sanitize_text_field($_POST['stripe_live_secret_key']));
-    wpwa_stripe_update_option('live_webhook_secret', sanitize_text_field($_POST['stripe_live_webhook_secret']));
-
 
 }
