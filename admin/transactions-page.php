@@ -189,6 +189,17 @@ function wpwa_paddle_render_transactions_page() {
                                     echo '<span style="color:green;font-weight:600;">✔ Notified</span>';
                                 }
                                 ?>
+
+                                <br><br>
+
+                                <button 
+                                    class="button button-secondary wpwa-site-lookup-btn"
+                                    data-user="<?php echo esc_attr($transaction['weebly_user_id']); ?>"
+                                    data-site="<?php echo esc_attr($transaction['weebly_site_id']); ?>"
+                                    data-access="<?php echo esc_attr($transaction['access_token']); ?>"
+                                >
+                                    🔍 Site Lookup
+                                </button>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -211,6 +222,120 @@ function wpwa_paddle_render_transactions_page() {
             ?>
         </div>
         <?php endif; ?>
+
+        <!-- Modal -->
+        <style>
+        .wpwa-modal-overlay {
+            position: fixed;
+            top:0; left:0;
+            width:100%; height:100%;
+            background: rgba(0,0,0,0.5);
+            z-index:9998;
+        }
+
+        .wpwa-modal-content {
+            position: fixed;
+            top:50%; left:50%;
+            transform: translate(-50%, -50%);
+            background:#fff;
+            padding:20px;
+            width:600px;
+            max-height:80vh;
+            overflow:auto;
+            border-radius:10px;
+            z-index:9999;
+        }
+
+        .wpwa-close {
+            float:right;
+            font-size:22px;
+            cursor:pointer;
+        }
+
+        .wpwa-site-item {
+            padding:12px;
+            border:1px solid #ddd;
+            border-radius:8px;
+            margin-bottom:10px;
+        }
+
+        .wpwa-site-item.match {
+            border-color:#007cba;
+            background:#e6f0ff;
+        }
+        </style>
+        <div id="wpwa-site-modal" style="display:none;">
+            <div class="wpwa-modal-overlay"></div>
+
+            <div class="wpwa-modal-content">
+                <span class="wpwa-close">&times;</span>
+
+                <h2>Weebly Sites</h2>
+
+                <div id="wpwa-site-loader" style="display:none;">Loading...</div>
+
+                <div id="wpwa-site-results">
+                    <p>No data yet.</p>
+                </div>
+            </div>
+        </div>
+        <script>
+        jQuery(document).ready(function($){
+
+            let modal = $('#wpwa-site-modal');
+
+            // Open modal
+            $('.wpwa-site-lookup-btn').on('click', function(){
+
+                let userId = $(this).data('user');
+                let siteId = $(this).data('site');
+                let accessToken = $(this).data('access');
+
+                modal.show();
+                $('#wpwa-site-results').html('');
+                $('#wpwa-site-loader').show();
+
+                // Fetch sites
+                $.post(ajaxurl, {
+                    action: 'wpwa_get_weebly_sites',
+                    access_token: accessToken
+                }, function(response){
+
+                    $('#wpwa-site-loader').hide();
+
+                    if (!response.success) {
+                        $('#wpwa-site-results').html('<p style="color:red;">Error loading sites</p>');
+                        return;
+                    }
+
+                    let html = '';
+
+                    response.data.forEach(site => {
+
+                        let isMatch = site.site_id == siteId;
+
+                        html += `
+                            <div class="wpwa-site-item ${isMatch ? 'match' : ''}">
+                                <strong>${site.site_title}</strong><br>
+                                <small>${site.site_id}</small>
+                                ${isMatch ? '<div style="color:green;font-weight:600;">✔ Matched Site</div>' : ''}
+                            </div>
+                        `;
+                    });
+
+                    $('#wpwa-site-results').html(html);
+                });
+
+            });
+
+            // Close modal
+            $('.wpwa-close, .wpwa-modal-overlay').on('click', function(){
+                modal.hide();
+            });
+
+        });
+        </script>
+        <!-- modal done -->
     </div>
     <?php
 }

@@ -46,6 +46,7 @@ if (is_admin()) {
     require_once WPWA_PADDLE_DIR . '/admin/customers-page.php';
     require_once WPWA_PADDLE_DIR . '/admin/analytics-page.php';
     require_once WPWA_PADDLE_DIR . '/admin/whitelist-page.php';
+    require_once WPWA_PADDLE_DIR . '/admin/site-lookup.php';
 }
 
 // Emails
