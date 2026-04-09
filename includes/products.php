@@ -138,46 +138,29 @@ function wpwa_paddle_render_product_weebly_meta_box($post) {
     <?php
 }
 
+/**
+ * Render Paddle manual input meta box
+ */
 function wpwa_paddle_render_product_sync_meta_box($post) {
+    // Retrieve current values
     $paddle_product_id = get_post_meta($post->ID, '_wpwa_paddle_product_id', true);
     $paddle_price_id = get_post_meta($post->ID, '_wpwa_paddle_price_id', true);
-    ?>
+   ?>
     <div style="padding: 10px;">
-        <?php if ($paddle_product_id): ?>
-            <p><strong>✅ Synced to Paddle</strong></p>
-            <p><small>Product ID: <code><?php echo esc_html($paddle_product_id); ?></code></small></p>
-            <p><small>Price ID: <code><?php echo esc_html($paddle_price_id); ?></code></small></p>
-            <button type="button" class="button" onclick="wpwaPaddleResync(<?php echo $post->ID; ?>)">
-                Resync to Paddle
-            </button>
-        <?php else: ?>
-            <p><strong>Not synced yet</strong></p>
-            <button type="button" class="button button-primary" onclick="wpwaPaddleSync(<?php echo $post->ID; ?>)">
-                Sync to Paddle Now
-            </button>
-        <?php endif; ?>
+        <p>
+            <label for="wpwa_paddle_product_id"><strong>Paddle Product ID</strong></label><br />
+            <input type="text" id="wpwa_paddle_product_id" name="wpwa_paddle_product_id" 
+                   value="<?php echo esc_attr($paddle_product_id); ?>" class="widefat" placeholder="pro_..." />
+        </p>
+        <p>
+            <label for="wpwa_paddle_price_id"><strong>Paddle Price ID</strong></label><br />
+            <input type="text" id="wpwa_paddle_price_id" name="wpwa_paddle_price_id" 
+                   value="<?php echo esc_attr($paddle_price_id); ?>" class="widefat" placeholder="pri_..." />
+        </p>
+        <p class="description">
+            Enter the Product and Price IDs from your Paddle Billing dashboard.
+        </p>
     </div>
-    
-    <script>
-    function wpwaPaddleSync(productId) {
-        if (!confirm('Sync this product to Paddle?')) return;
-        
-        fetch(ajaxurl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'action=wpwa_paddle_sync_product&product_id=' + productId + '&nonce=<?php echo wp_create_nonce('wpwa_paddle_sync'); ?>'
-        })
-        .then(r => r.json())
-        .then(data => {
-            alert(data.success ? 'Synced successfully!' : 'Error: ' + data.data.message);
-            if (data.success) location.reload();
-        });
-    }
-    
-    function wpwaPaddleResync(productId) {
-        wpwaPaddleSync(productId);
-    }
-    </script>
     <?php
 }
 
@@ -208,6 +191,14 @@ function wpwa_paddle_save_product_meta($post_id, $post) {
     update_post_meta($post_id, '_wpwa_paddle_client_secret', sanitize_text_field($_POST['wpwa_paddle_client_secret']));
     update_post_meta($post_id, '_wpwa_paddle_old_pr_id', sanitize_text_field($_POST['wpwa_paddle_old_pr_id']));
     update_post_meta($post_id, '_wpwa_paddle_app_url', sanitize_text_field($_POST['wpwa_paddle_app_url']));
+    
+    // --- PADDLE SAVING ---
+    if (isset($_POST['wpwa_paddle_product_id'])) {
+        update_post_meta($post_id, '_wpwa_paddle_product_id', sanitize_text_field($_POST['wpwa_paddle_product_id']));
+    }
+    if (isset($_POST['wpwa_paddle_price_id'])) {
+        update_post_meta($post_id, '_wpwa_paddle_price_id', sanitize_text_field($_POST['wpwa_paddle_price_id']));
+    }
     
     if (get_post_meta($post_id, '_wpwa_paddle_product_id', true)) {
         update_post_meta($post_id, '_wpwa_paddle_needs_resync', '1');
