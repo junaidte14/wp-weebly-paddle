@@ -79,7 +79,7 @@ function wpwa_paddle_check_subscription_access($weebly_user_id, $product_id, $si
          WHERE weebly_user_id = %s
          AND weebly_site_id = %s 
          AND product_id = %d 
-         AND status = 'active' 
+         AND status IN ('active', 'trialing') 
          AND current_period_end > NOW()",
         $weebly_user_id,
         $site_id,

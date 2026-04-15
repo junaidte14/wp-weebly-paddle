@@ -141,28 +141,40 @@ function wpwa_paddle_get_transactions($args = array()) {
 
 function wpwa_paddle_get_transaction_count($status = null) {
     global $wpdb;
-    
     $table = $wpdb->prefix . 'wpwa_paddle_transactions';
     
-    if ($status) {
-        return $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM `{$table}` WHERE status = %s",
-            $status
-        ));
+    if ($status === null) {
+        $statuses = array('succeeded', 'completed');
+    } else {
+        $statuses = (array) $status;
     }
     
-    return $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+    $placeholders = implode(', ', array_fill(0, count($statuses), '%s'));   
+    $query = $wpdb->prepare(
+        "SELECT COUNT(*) FROM `{$table}` WHERE status IN ($placeholders)",
+        $statuses
+    );
+    
+    return (int) $wpdb->get_var($query);
 }
 
 function wpwa_paddle_get_total_revenue($status = 'succeeded') {
-    global $wpdb;
-    
+    global $wpdb;   
     $table = $wpdb->prefix . 'wpwa_paddle_transactions';
     
-    $total = $wpdb->get_var($wpdb->prepare(
-        "SELECT SUM(amount) FROM `{$table}` WHERE status = %s",
-        $status
-    ));
+    if ($status === 'succeeded') {
+        $statuses = array('succeeded', 'completed');
+    } else {
+        $statuses = (array) $status;
+    }
     
+    // Create placeholders (%s, %s...) based on the number of statuses
+    $placeholders = implode(', ', array_fill(0, count($statuses), '%s'));
+    $query = $wpdb->prepare(
+        "SELECT SUM(amount) FROM `{$table}` WHERE status IN ($placeholders)",
+        $statuses
+    );
+    
+    $total = $wpdb->get_var($query);
     return (float) $total;
 }

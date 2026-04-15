@@ -110,6 +110,9 @@ function wpwa_paddle_process_webhook_event($event) {
         case 'subscription.activated':
             return wpwa_paddle_handle_subscription_activated($data);
         
+        case 'subscription.trialing':
+            return wpwa_paddle_handle_subscription_trialing($data);
+        
         case 'subscription.canceled':
             return wpwa_paddle_handle_subscription_canceled($data);
         
@@ -120,6 +123,32 @@ function wpwa_paddle_process_webhook_event($event) {
             wpwa_paddle_log('Unhandled webhook event: ' . $event_type);
             return array('success' => true, 'message' => 'Event not handled');
     }
+}
+
+function wpwa_paddle_handle_subscription_trialing($subscription) {
+    global $wpdb;
+    
+    $custom_data = $subscription['custom_data'] ?? array();
+    $weebly_user_id = $custom_data['weebly_user_id'] ?? '';
+    
+    if (empty($weebly_user_id)) {
+        return array('success' => false, 'message' => 'Missing Weebly User ID');
+    }
+
+    $sub_table = $wpdb->prefix . 'wpwa_paddle_subscriptions';
+    
+    $wpdb->update(
+        $sub_table,
+        array(
+            'status' => 'trialing',
+            'current_period_start' => date('Y-m-d H:i:s', strtotime($subscription['current_billing_period']['starts_at'])),
+            'current_period_end'   => date('Y-m-d H:i:s', strtotime($subscription['current_billing_period']['ends_at'])),
+        ),
+        array('paddle_subscription_id' => $subscription['id'])
+    );
+
+    wpwa_paddle_send_trialing_email_by_sub_id($subscription['id']);
+    return array('success' => true);
 }
 
 function wpwa_paddle_update_transaction_by_paddle_id($paddle_id, $data) {

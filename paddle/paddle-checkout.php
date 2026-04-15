@@ -316,7 +316,7 @@ function wpwa_paddle_handle_checkout_success() {
         exit;
     }
     
-    wp_die('Transaction not found');
+    wp_die('Transaction confirmation is pending. Please refresh your Weebly dashboard in a moment or contact at https://codoplex.com/contact.');
 }
 
 function wpwa_paddle_handle_checkout_cancel() {
