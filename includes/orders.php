@@ -144,7 +144,7 @@ function wpwa_paddle_get_transaction_count($status = null) {
     $table = $wpdb->prefix . 'wpwa_paddle_transactions';
     
     if ($status === null) {
-        $statuses = array('succeeded', 'completed', 'pending');
+        $statuses = array('succeeded', 'completed', 'pending', 'revoked');
     } else {
         $statuses = array('succeeded', 'completed');
     }

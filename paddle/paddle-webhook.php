@@ -436,3 +436,64 @@ function wpwa_paddle_notify_weebly($transaction_id) {
     
     return false;
 }
+
+function wpwa_paddle_remove_access($transaction_id) {
+    $transaction = wpwa_paddle_get_transaction($transaction_id);   
+    if (!$transaction) {
+        return false;
+    }
+    $product = wpwa_paddle_get_product($transaction['product_id']);
+    if (!$product) {
+        return false;
+    }
+    // Retrieve required data
+    $site_id = $transaction['weebly_site_id'];
+    $app_id = $product['client_id'];
+    $access_token = trim(wpwa_paddle_decrypt_token($transaction['access_token']));
+    
+    if (!$site_id || !$app_id || !$access_token) {
+        wpwa_paddle_log('Missing parameters for deauthorization', [
+            'site_id' => $site_id,
+            'app_id' => $app_id,
+            'has_token' => !empty($access_token)
+        ]);
+        return false;
+    }
+    
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => "https://api.weebly.com/v1/user/sites/{$site_id}/apps/{$app_id}/deauthorize",
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CUSTOMREQUEST => "POST",
+        CURLOPT_POSTFIELDS => json_encode([
+            'site_id' => $site_id,
+            'platform_app_id' => $app_id
+        ]),
+        CURLOPT_HTTPHEADER => array(
+            "Content-Type: application/json",
+            "x-weebly-access-token: " . $access_token
+        ),
+    ));
+    
+    $response = curl_exec($curl);
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+    
+    if ($http_code == 200) {
+        global $wpdb;
+        $wpdb->update(
+            $wpdb->prefix . 'wpwa_paddle_transactions',
+            array('status' => 'revoked'),
+            array('id' => $transaction_id)
+        );
+        return true;
+    }
+    
+    wpwa_paddle_log('Weebly Deauthorize Error', [
+        'code' => $http_code,
+        'response' => $response
+    ]);
+    
+    return false;
+}

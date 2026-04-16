@@ -5,6 +5,30 @@ function wpwa_paddle_render_transactions_page() {
     if (!current_user_can('manage_options')) {
         wp_die(__('Unauthorized', 'wpwa-paddle'));
     }
+
+    // --- New Action Handler for Remove Access ---
+    if (isset($_GET['action']) && isset($_GET['transaction_id'])) {
+        $transaction_id = intval($_GET['transaction_id']);
+        
+        if ($_GET['action'] === 'notify_weebly') {
+            check_admin_referer('wpwa_paddle_notify_weebly_' . $transaction_id);
+            $result = wpwa_paddle_notify_weebly($transaction_id);
+            $status_key = 'weebly_status';
+        } 
+        elseif ($_GET['action'] === 'remove_access') {
+            check_admin_referer('wpwa_paddle_remove_access_' . $transaction_id);
+            $result = wpwa_paddle_remove_access($transaction_id);
+            //var_dump($result);
+            //wp_die();
+            $status_key = 'remove_status';
+        }
+
+        if (isset($result)) {
+            $status_val = $result ? 'success' : 'error';
+            wp_redirect(add_query_arg($status_key, $status_val, admin_url('admin.php?page=wpwa-paddle-transactions')));
+            exit;
+        }
+    }
     
     if (isset($_GET['action']) && $_GET['action'] === 'notify_weebly' && isset($_GET['transaction_id'])) {
         $transaction_id = intval($_GET['transaction_id']);
@@ -55,6 +79,12 @@ function wpwa_paddle_render_transactions_page() {
         if ($_GET['weebly_status'] === 'error') {
             echo '<div class="notice notice-error is-dismissible"><p>Failed to notify Weebly.</p></div>';
         }
+    }
+
+    if (isset($_GET['remove_status'])) {
+        echo $_GET['remove_status'] === 'success' 
+            ? '<div class="notice notice-success is-dismissible"><p>Access removed successfully.</p></div>' 
+            : '<div class="notice notice-error is-dismissible"><p>Failed to remove access from Weebly.</p></div>';
     }
     ?>
     <div class="wrap wpwa-paddle-wrap">
@@ -190,6 +220,21 @@ function wpwa_paddle_render_transactions_page() {
                                     echo '<span style="color:green;font-weight:600;">✔ Notified</span>';
                                 }
                                 ?>
+
+                                <br><br>
+
+                                <?php
+                                // Remove Access Button
+                                $remove_url = wp_nonce_url(
+                                    admin_url('admin.php?page=wpwa-paddle-transactions&action=remove_access&transaction_id=' . $transaction['id']),
+                                    'wpwa_paddle_remove_access_' . $transaction['id']
+                                );
+                                ?>
+                                <a href="<?php echo esc_url($remove_url); ?>" 
+                                class="button button-small button-link-delete" 
+                                onclick="return confirm('Are you sure you want to revoke access for this site?');">
+                                🚫 Remove Access
+                                </a>
 
                                 <br><br>
 
