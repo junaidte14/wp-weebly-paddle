@@ -170,6 +170,7 @@ function wpwa_paddle_render_transactions_page() {
                                 <?php 
                                 $status_badges = array(
                                     'completed' => '<span style="background: #e6fffa; color: #047481; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">✅ Completed</span>',
+                                    'succeeded' => '<span style="background: #e6fffa; color: #047481; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">✅ Succeeded</span>',
                                     'pending' => '<span style="background: #fffbeb; color: #92400e; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">⏳ Pending</span>',
                                     'failed' => '<span style="background: #fef2f2; color: #991b1b; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">❌ Failed</span>'
                                 );
