@@ -221,7 +221,7 @@ function wpwa_paddle_render_transactions_page() {
                                 }
                                 ?>
 
-                                <br><br>
+                                <br>
 
                                 <?php
                                 // Remove Access Button
@@ -236,7 +236,7 @@ function wpwa_paddle_render_transactions_page() {
                                 🚫 Remove Access
                                 </a>
 
-                                <br><br>
+                                <br>
 
                                 <button 
                                     class="button button-secondary wpwa-site-lookup-btn"
