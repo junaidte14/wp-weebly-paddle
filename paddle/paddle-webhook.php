@@ -126,9 +126,13 @@ function wpwa_paddle_process_webhook_event($event) {
 }
 
 function wpwa_paddle_handle_subscription_trialing($subscription) {
+    $custom_data = $subscription['custom_data'] ?? array();
+    if (!isset($custom_data['app_source']) || $custom_data['app_source'] !== 'weebly_licenses') {
+        return array('success' => true, 'message' => 'Ignored: Different app source');
+    }
+    
     global $wpdb;
     
-    $custom_data = $subscription['custom_data'] ?? array();
     $weebly_user_id = $custom_data['weebly_user_id'] ?? '';
     
     if (empty($weebly_user_id)) {
