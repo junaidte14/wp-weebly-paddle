@@ -157,7 +157,7 @@ function wpwa_paddle_check_legacy_wc_access($weebly_user_id, $product_id, $site_
          WHERE weebly_user_id = %s
          AND weebly_site_id = %s 
          AND product_id = %d 
-         AND status IN ('completed', 'processing') 
+         AND status = 'completed' 
          ORDER BY order_date DESC 
          LIMIT 1",
         $weebly_user_id,
