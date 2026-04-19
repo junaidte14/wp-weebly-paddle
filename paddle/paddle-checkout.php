@@ -110,6 +110,16 @@ function wpwa_paddle_checkout_router() {
 }
 
 function wpwa_paddle_render_checkout_page($txn_id) {
+    // Force LiteSpeed to ignore this request
+    if (defined('LSCWP_V')) {
+        do_action('litespeed_control_set_nocache');
+    }
+
+    // Standard WordPress anti-caching
+    if (!defined('DONOTCACHEPAGE')) {
+        define('DONOTCACHEPAGE', true);
+    }
+    
     global $wpdb;
     $table = $wpdb->prefix . 'wpwa_paddle_transactions';
 

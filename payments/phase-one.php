@@ -11,7 +11,14 @@ if ( ! class_exists( 'WeeblyClient' ) ) {
 }
 
 function wpwa_paddle_handle_phase_one() {
-    wpwa_paddle_log("Phase One Started", $_GET);
+    // Force LiteSpeed to ignore this request
+    if (defined('LSCWP_V')) {
+        do_action('litespeed_control_set_nocache');
+    }
+    // Standard WordPress anti-caching
+    if (!defined('DONOTCACHEPAGE')) {
+        define('DONOTCACHEPAGE', true);
+    }
     
     if (strpos($_SERVER['QUERY_STRING'], '?') !== false) {
         $fixed = str_replace('?', '&', $_SERVER['QUERY_STRING']);
