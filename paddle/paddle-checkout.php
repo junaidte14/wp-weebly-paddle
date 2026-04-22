@@ -85,28 +85,181 @@ function wpwa_paddle_create_checkout_transaction($args) {
 function wpwa_paddle_checkout_router() {
     wpwa_paddle_log("Checkout router hit", $_GET);
 
+    // 1. Check for the transaction ID (either your internal one or Paddle's ID)
     $txn_id = isset($_GET['_ptxn']) ? sanitize_text_field($_GET['_ptxn']) : '';
-
-    if (!$txn_id) {
-        wpwa_paddle_log("Missing txn id");
-        wp_die('Invalid transaction');
-    }
-
-    // Handle success/cancel first
+    
+    // 2. Handle success/cancel actions
     $action = $_GET['action'] ?? '';
-
     if ($action === 'success') {
         wpwa_paddle_handle_checkout_success();
         return;
     }
-
     if ($action === 'cancel') {
         wpwa_paddle_handle_checkout_cancel();
         return;
     }
 
-    // 🔥 DEFAULT: Render checkout page
-    wpwa_paddle_render_checkout_page($txn_id);
+    if (!$txn_id) {
+        wpwa_paddle_log("Missing txn id");
+        wp_die('Error: No Transaction Reference Provided. If you are trying to pay an invoice, please use the link provided in your email.');
+    }
+
+    // 4. Determine if this is an internal app purchase or a generic invoice
+    global $wpdb;
+    $table = $wpdb->prefix . 'wpwa_paddle_transactions';
+    $exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE paddle_transaction_id = %s", $txn_id));
+
+    if ($exists) {
+        // This is a Weebly App license purchase (exists in our DB)
+        wpwa_paddle_render_checkout_page($txn_id);
+    } else {
+        // This is a generic invoice or dashboard-created link
+        wpwa_paddle_render_generic_invoice_page($txn_id);
+    }
+}
+
+function wpwa_paddle_render_generic_invoice_page($paddle_txn_id) {
+    // Force LiteSpeed and WP to ignore caching
+    if (defined('LSCWP_V')) { do_action('litespeed_control_set_nocache'); }
+    if (!defined('DONOTCACHEPAGE')) { define('DONOTCACHEPAGE', true); }
+
+    // Fetch the transaction details from Paddle API
+    $result = wpwa_paddle_api_request("/transactions/{$paddle_txn_id}", 'GET');
+    
+    if (!$result['success'] || empty($result['data'])) {
+        wpwa_paddle_log("Generic Invoice Error: " . ($result['message'] ?? 'Not found'));
+        wp_die('Invoice or Transaction not found. It may have expired or already been paid.');
+    }
+
+    $txn_data = $result['data'];
+    
+    // Extract totals (Paddle V2 returns amounts in lowest denomination, usually cents)
+    $total_raw = $txn_data['details']['totals']['total'] ?? 0;
+    $display_price = number_format($total_raw / 100, 2);
+    $currency_code = $txn_data['currency_code'] ?? 'USD';
+    
+    // Attempt to get a descriptive name from the first item
+    $product_name = $txn_data['items'][0]['price']['description'] ?? 'Custom Invoice';
+    
+    // Settings & Identity (Same as your regular function)
+    $sandbox_mode = wpwa_paddle_get_option('sandbox_mode') === 'yes';
+    $client_token = $sandbox_mode ? wpwa_paddle_get_option('sandbox_client_token') : wpwa_paddle_get_option('live_client_token');
+    $environment  = $sandbox_mode ? 'sandbox' : 'production';
+    
+    $site_title = get_bloginfo('name');
+    $logo_url   = 'https://codoplex.com/wp-content/uploads/2022/05/cropped-Logo-Icon-300x300codoplex-300x300-1-100x100.png';
+
+    ?>
+    <!DOCTYPE html>
+    <html <?php language_attributes(); ?>>
+    <head>
+        <meta charset="UTF-8">
+        <title>Payment Required - <?php echo esc_html($site_title); ?></title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+        
+        <style>
+            /* Reusing your exact styles for visual consistency */
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+            .wpwa-checkout-page { padding: 40px 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box; }
+            .checkout-container { background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); max-width: 480px; width: 100%; border: 1px solid #e2e8f0; overflow: hidden; }
+            .card-header { padding: 20px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+            .card-header img { max-height: 50px; margin-bottom: 10px; }
+            .card-header h2 { margin: 0; font-size: 16px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; }
+            .card-body { padding: 30px; text-align: center; }
+            .product-badge { background: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+            .card-body h1 { margin: 15px 0; font-size: 24px; color: #1e293b; font-weight: 800; }
+            .price-container { margin: 20px 0; }
+            .price-amount { font-size: 48px; font-weight: 800; color: #10b981; display: block; line-height: 1; }
+            .price-currency { font-size: 20px; vertical-align: top; margin-right: 2px; position: relative; top: 8px; }
+            .details-box { background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 10px; padding: 18px; margin-bottom: 25px; text-align: left; }
+            .details-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+            .details-row label { color: #94a3b8; font-weight: 500; }
+            .details-row span { color: #1e293b; font-family: 'Courier New', monospace; font-weight: 600; }
+            .btn-paddle { display: block; width: 100%; background: #6366f1; color: white; border: none; padding: 18px; border-radius: 10px; font-weight: 700; font-size: 18px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+            .btn-paddle:hover { background: #4f46e5; transform: translateY(-1px); }
+            .btn-paddle.loading { opacity: 0.7; pointer-events: none; }
+            .card-footer { background: #f8fafc; padding: 20px; border-top: 1px solid #f1f5f9; text-align: center; }
+            .footer-links a { font-size: 12px; color: #94a3b8; text-decoration: none; margin: 0 10px; }
+            .copyright { font-size: 11px; color: #cbd5e1; margin-top: 15px; }
+        </style>
+    </head>
+    <body>
+
+    <div class="wpwa-checkout-page">
+        <div class="checkout-container">
+            <div class="card-header">
+                <?php if ($logo_url): ?>
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="Logo">
+                <?php endif; ?>
+                <h2><?php echo esc_html($site_title); ?></h2>
+            </div>
+
+            <div class="card-body">
+                <div class="product-badge">Secure Payment Request</div>
+                <h1><?php echo esc_html($product_name); ?></h1>
+                
+                <div class="price-container">
+                    <span class="price-amount">
+                        <span class="price-currency">$</span><?php echo esc_html($display_price); ?>
+                    </span>
+                </div>
+
+                <div class="details-box">
+                    <div class="details-row">
+                        <label>Transaction ID</label>
+                        <span><?php echo esc_html($paddle_txn_id); ?></span>
+                    </div>
+                    <div class="details-row">
+                        <label>Status</label>
+                        <span style="color: #6366f1;"><?php echo ucfirst(esc_html($txn_data['status'])); ?></span>
+                    </div>
+                </div>
+
+                <button id="payBtn" class="btn-paddle">Pay Now Securely →</button>
+            </div>
+
+            <div class="card-footer">
+                <div class="footer-links">
+                    <a href="https://codoplex.com/privacy-policy/" target="_blank">Privacy</a>
+                    <a href="https://codoplex.com/contact/" target="_blank">Support</a>
+                </div>
+                <p class="copyright">© <?php echo date('Y'); ?> Codoplex. Secure checkout by Paddle.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Paddle.Environment.set("<?php echo esc_js($environment); ?>");
+        Paddle.Initialize({
+            token: "<?php echo esc_js($client_token); ?>"
+        });
+
+        const btn = document.getElementById('payBtn');
+        btn.addEventListener('click', function () {
+            btn.classList.add('loading');
+            btn.innerText = "Opening Secure Checkout...";
+
+            Paddle.Checkout.open({
+                transactionId: "<?php echo esc_js($paddle_txn_id); ?>",
+                settings: {
+                    displayMode: "overlay",
+                    theme: "light",
+                    locale: "en"
+                }
+            });
+            
+            setTimeout(() => {
+                btn.classList.remove('loading');
+                btn.innerText = "Pay Now Securely →";
+            }, 5000);
+        });
+    </script>
+
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
 function wpwa_paddle_render_checkout_page($txn_id) {
