@@ -139,7 +139,7 @@ function wpwa_paddle_render_generic_invoice_page($paddle_txn_id) {
     $currency_code = $txn_data['currency_code'] ?? 'USD';
     
     // Attempt to get a descriptive name from the first item
-    $product_name = $txn_data['items'][0]['price']['description'] ?? 'Custom Invoice';
+    $product_name = $txn_data['items'][0]['price']['name'] ?? 'Custom Invoice';
     
     // Settings & Identity (Same as your regular function)
     $sandbox_mode = wpwa_paddle_get_option('sandbox_mode') === 'yes';
