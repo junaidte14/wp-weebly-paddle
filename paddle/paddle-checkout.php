@@ -176,7 +176,7 @@ function wpwa_paddle_render_generic_invoice_page($paddle_txn_id) {
             .details-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
             .details-row label { color: #94a3b8; font-weight: 500; }
             .details-row span { color: #1e293b; font-family: 'Courier New', monospace; font-weight: 600; }
-            .btn-paddle { display: block; width: 100%; background: #6366f1; color: white; border: none; padding: 18px; border-radius: 10px; font-weight: 700; font-size: 18px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+            .btn-paddle { display: inline-block; text-decoration: none; background: #6366f1; color: white; border: none; padding: 18px; border-radius: 10px; font-weight: 700; font-size: 18px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
             .btn-paddle:hover { background: #4f46e5; transform: translateY(-1px); }
             .btn-paddle.loading { opacity: 0.7; pointer-events: none; }
             .card-footer { background: #f8fafc; padding: 20px; border-top: 1px solid #f1f5f9; text-align: center; }
@@ -343,10 +343,18 @@ function wpwa_paddle_render_checkout_page($txn_id) {
             .details-row span { color: #1e293b; font-family: 'Courier New', monospace; font-weight: 600; }
 
             /* Buttons */
-            .btn-paddle { display: block; width: 100%; background: #6366f1; color: white; border: none; padding: 18px; border-radius: 10px; font-weight: 700; font-size: 18px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+            .btn-paddle {
+                display: flex; align-items: center; justify-content: center;
+                background: #000000; color: #ffffff; width: 100%;
+                padding: 14px; border-radius: 8px; border: none;
+                font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+                text-decoration: none;
+            }
+            .btn-paddle svg { margin-right: 10px; }
             .btn-paddle:hover { background: #4f46e5; transform: translateY(-1px); }
             .btn-paddle:active { transform: translateY(0); }
             .btn-paddle.loading { opacity: 0.7; pointer-events: none; }
+            .divider { margin: 15px 0; color: #94a3b8; font-size: 12px; font-weight: 600; text-transform: uppercase; }
 
             .btn-upsell { display: block; color: #6366f1; text-decoration: none; padding: 12px; font-weight: 600; margin-top: 15px; font-size: 14px; border: 1px dashed #cbd5e1; border-radius: 8px; }
             .btn-upsell:hover { background: #f5f7ff; border-color: #6366f1; }
@@ -390,8 +398,14 @@ function wpwa_paddle_render_checkout_page($txn_id) {
                         <span><?php echo esc_html($transaction['weebly_site_id']); ?></span>
                     </div>
                 </div>
-
-                <button id="payBtn" class="btn-paddle">Proceed to Secure Payment →</button>
+                <?php do_action('wpwa_checkout_card_buttons', $transaction, $product); ?>
+                <button id="payBtn" class="btn-paddle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 4H4C2.89 4 2 4.89 2 6V18C2 19.11 2.89 20 4 20H20C21.11 20 22 19.11 22 18V6C22 4.89 21.11 4 20 4Z" fill="#0070ba" opacity="0.3"/>
+                        <path d="M12 11.5L8 15V13H5V10H8V8L12 11.5Z" fill="white"/>
+                    </svg>
+                    Pay with PayPal or Paddle
+                </button>
 
                 <a href="<?php echo esc_url($upsell_url . '?user_id=' . $transaction['weebly_user_id'] . '&site_id=' . $transaction['weebly_site_id']); ?>" target="_blank" class="btn-upsell">
                     🚀 Upgrade to All-in-One Whitelist

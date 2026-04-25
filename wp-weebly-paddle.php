@@ -55,6 +55,9 @@ require_once WPWA_PADDLE_DIR . '/emails/confirmation.php';
 // Payment flow
 require_once WPWA_PADDLE_DIR . '/payments/phase-one.php';
 
+// Extensions
+require_once WPWA_PADDLE_DIR . '/extensions/wpwa-stripe-extension.php';
+
 register_activation_hook(__FILE__, 'wpwa_paddle_activate');
 register_deactivation_hook(__FILE__, 'wpwa_paddle_deactivate');
 
@@ -62,10 +65,12 @@ function wpwa_paddle_activate() {
     wpwa_paddle_install_tables();
     wpwa_paddle_register_product_post_type();
     flush_rewrite_rules();
+    do_action('wpwa_paddle_activated');
 }
 
 function wpwa_paddle_deactivate() {
     flush_rewrite_rules();
+    do_action('wpwa_paddle_deactivated');
 }
 
 add_action('init', 'wpwa_paddle_init');
@@ -73,10 +78,23 @@ add_action('admin_menu', 'wpwa_paddle_admin_menu');
 
 function wpwa_paddle_init() {
     wpwa_paddle_register_product_post_type();
+    do_action('wpwa_paddle_init');
 }
 
 add_action('parse_request', function() {
     $path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+    
+    // Allow extensions to register custom routes
+    $custom_routes = apply_filters('wpwa_paddle_custom_routes', array());
+    
+    foreach ($custom_routes as $route => $callback) {
+        if (strpos($path, $route) === 0) {
+            if (is_callable($callback)) {
+                call_user_func($callback);
+                exit;
+            }
+        }
+    }
     
     if (strpos($path, 'wpwa_phase_one') === 0) {
         require_once WPWA_PADDLE_DIR . '/payments/phase-one.php';
@@ -128,4 +146,6 @@ function wpwa_paddle_admin_menu() {
     
     add_submenu_page('wpwa-paddle', __('Settings', 'wpwa-paddle'), __('Settings', 'wpwa-paddle'),
         'manage_options', 'wpwa-paddle-settings', 'wpwa_paddle_render_settings_page');
+    
+    do_action('wpwa_paddle_admin_menu');
 }

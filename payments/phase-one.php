@@ -2,11 +2,11 @@
 if (!defined('ABSPATH')) exit;
 
 // Load dependencies safely
-if ( ! class_exists( 'HMAC' ) ) {
+if (!class_exists('HMAC')) {
     require_once WPWA_PADDLE_DIR . '/lib/Util/HMAC.php';
 }
 
-if ( ! class_exists( 'WeeblyClient' ) ) {
+if (!class_exists('WeeblyClient')) {
     require_once WPWA_PADDLE_DIR . '/lib/Weebly/WeeblyClient.php';
 }
 
@@ -15,7 +15,6 @@ function wpwa_paddle_handle_phase_one() {
     if (defined('LSCWP_V')) {
         do_action('litespeed_control_set_nocache');
     }
-    // Standard WordPress anti-caching
     if (!defined('DONOTCACHEPAGE')) {
         define('DONOTCACHEPAGE', true);
     }
@@ -110,7 +109,7 @@ function wpwa_paddle_handle_oauth_callback($product) {
     $email = '';
     $name = '';
     
-    // Universal access check across all payment processors
+    // Universal access check - supports all payment gateways
     $access_check = wpwa_universal_user_has_access($user_id, $product['id'], $site_id);
     
     if ($access_check['has_access']) {
@@ -130,6 +129,7 @@ function wpwa_paddle_handle_oauth_callback($product) {
         exit;
     }
     
+    // Prepare checkout args
     $checkout_args = array(
         'product_id' => $product['id'],
         'weebly_user_id' => $user_id,
@@ -142,11 +142,11 @@ function wpwa_paddle_handle_oauth_callback($product) {
     );
     
     $session_result = wpwa_paddle_create_checkout_transaction($checkout_args);
-    
-    if (!$session_result['success'] || empty($session_result['checkout_url'])) {
-        wp_die('Failed to create checkout: ' . ($session_result['message'] ?? 'Unknown error'));
+
+    if ($session_result['success']) {
+        // This redirect now leads to the Unified Card (paddle-checkout.php)
+        wp_redirect($session_result['checkout_url']); 
+        exit;
     }
     
-    wp_redirect($session_result['checkout_url']);
-    exit;
 }

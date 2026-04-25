@@ -145,6 +145,9 @@ function wpwa_paddle_render_product_sync_meta_box($post) {
     // Retrieve current values
     $paddle_product_id = get_post_meta($post->ID, '_wpwa_paddle_product_id', true);
     $paddle_price_id = get_post_meta($post->ID, '_wpwa_paddle_price_id', true);
+    $stripe_product_id = get_post_meta($post->ID, '_wpwa_stripe_product_id', true);
+    $stripe_price_id = get_post_meta($post->ID, '_wpwa_stripe_price_id', true);
+    
    ?>
     <div style="padding: 10px;">
         <p>
@@ -159,6 +162,22 @@ function wpwa_paddle_render_product_sync_meta_box($post) {
         </p>
         <p class="description">
             Enter the Product and Price IDs from your Paddle Billing dashboard.
+        </p>
+    </div>
+
+    <div style="padding: 10px;">
+        <p>
+            <label for="wpwa_stripe_product_id"><strong>Stripe Product ID</strong></label><br />
+            <input type="text" id="wpwa_stripe_product_id" name="wpwa_stripe_product_id" 
+                   value="<?php echo esc_attr($stripe_product_id); ?>" class="widefat" placeholder="pro_..." />
+        </p>
+        <p>
+            <label for="wpwa_stripe_price_id"><strong>Stripe Price ID</strong></label><br />
+            <input type="text" id="wpwa_stripe_price_id" name="wpwa_stripe_price_id" 
+                   value="<?php echo esc_attr($stripe_price_id); ?>" class="widefat" placeholder="pri_..." />
+        </p>
+        <p class="description">
+            Enter the Product and Price IDs from your Stripe dashboard.
         </p>
     </div>
     <?php
@@ -199,10 +218,15 @@ function wpwa_paddle_save_product_meta($post_id, $post) {
     if (isset($_POST['wpwa_paddle_price_id'])) {
         update_post_meta($post_id, '_wpwa_paddle_price_id', sanitize_text_field($_POST['wpwa_paddle_price_id']));
     }
-    
-    if (get_post_meta($post_id, '_wpwa_paddle_product_id', true)) {
-        update_post_meta($post_id, '_wpwa_paddle_needs_resync', '1');
+
+    // --- Stripe SAVING ---
+    if (isset($_POST['wpwa_stripe_product_id'])) {
+        update_post_meta($post_id, '_wpwa_stripe_product_id', sanitize_text_field($_POST['wpwa_stripe_product_id']));
     }
+    if (isset($_POST['wpwa_stripe_price_id'])) {
+        update_post_meta($post_id, '_wpwa_stripe_price_id', sanitize_text_field($_POST['wpwa_stripe_price_id']));
+    }
+    
 }
 
 function wpwa_paddle_get_product($product_id) {

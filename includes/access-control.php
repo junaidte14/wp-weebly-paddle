@@ -3,7 +3,13 @@ if (!defined('ABSPATH')) exit;
 
 function wpwa_universal_user_has_access($weebly_user_id, $product_id, $site_id = '') {
     
-    // Priority 1: Check whitelist if available (could be from any plugin)
+    // Hook: Allow extensions to add custom access checks (before standard checks)
+    $custom_access = apply_filters('wpwa_pre_access_check', null, $weebly_user_id, $product_id, $site_id);
+    if (is_array($custom_access) && !empty($custom_access['has_access'])) {
+        return $custom_access;
+    }
+    
+    // Priority 1: Check whitelist
     $whitelist_check = wpwa_paddle_check_local_whitelist($weebly_user_id, $product_id, $site_id);
     if ($whitelist_check['has_access']) {
         return $whitelist_check;
@@ -21,17 +27,22 @@ function wpwa_universal_user_has_access($weebly_user_id, $product_id, $site_id =
         return $paddle_purchase_check;
     }
     
-    // Priority 5: Check Legacy WooCommerce if tables exist
+    // Hook: Allow extensions to add custom payment gateway checks (Stripe, etc)
+    $extension_access = apply_filters('wpwa_custom_gateway_access_check', null, $weebly_user_id, $product_id, $site_id);
+    if (is_array($extension_access) && !empty($extension_access['has_access'])) {
+        return $extension_access;
+    }
+    
+    // Priority 5: Check Legacy WooCommerce
     $legacy_purchase_check = wpwa_paddle_check_legacy_wc_access($weebly_user_id, $product_id, $site_id);
     if ($legacy_purchase_check['has_access']) {
         return $legacy_purchase_check;
     }
     
-    return array(
-        'has_access' => false,
-        'source' => null,
-        'details' => array()
-    );
+    // Hook: Final fallback access check
+    $final_check = apply_filters('wpwa_final_access_check', array('has_access' => false), $weebly_user_id, $product_id, $site_id);
+    
+    return $final_check;
 }
 
 function wpwa_paddle_check_local_whitelist($weebly_user_id, $product_id, $site_id) {
@@ -39,7 +50,6 @@ function wpwa_paddle_check_local_whitelist($weebly_user_id, $product_id, $site_i
     
     $table = $wpdb->prefix . 'wpwa_paddle_whitelist';
     
-    // Check if table exists
     if ($wpdb->get_var("SHOW TABLES LIKE '{$table}'") != $table) {
         return array('has_access' => false);
     }
@@ -138,7 +148,6 @@ function wpwa_paddle_check_purchase_access($weebly_user_id, $product_id, $site_i
 function wpwa_paddle_check_legacy_wc_access($weebly_user_id, $product_id, $site_id) {
     global $wpdb;
     
-    // Get old product ID from meta
     $old_pr_id = get_post_meta($product_id, '_wpwa_paddle_old_pr_id', true);
     
     if (!$old_pr_id) {
@@ -147,7 +156,6 @@ function wpwa_paddle_check_legacy_wc_access($weebly_user_id, $product_id, $site_
     
     $table = $wpdb->prefix . 'wpwa_archived_orders';
     
-    // Check if table exists
     if ($wpdb->get_var("SHOW TABLES LIKE '{$table}'") != $table) {
         return array('has_access' => false);
     }
@@ -187,6 +195,13 @@ function wpwa_paddle_update_user_access_token($weebly_user_id, $weebly_site_id, 
     
     $encrypted_token = wpwa_paddle_encrypt_token($access_token);
     
+    // Hook: Allow extensions to handle token updates for custom gateways
+    $handled = apply_filters('wpwa_update_access_token', false, $weebly_user_id, $weebly_site_id, $product_id, $encrypted_token, $source);
+    
+    if ($handled) {
+        return;
+    }
+    
     switch ($source) {
         case 'paddle_subscription':
             $table = $wpdb->prefix . 'wpwa_paddle_subscriptions';
@@ -217,7 +232,6 @@ function wpwa_paddle_update_user_access_token($weebly_user_id, $weebly_site_id, 
             $old_pr_id = get_post_meta($product_id, '_wpwa_paddle_old_pr_id', true);
             if ($old_pr_id) {
                 $table = $wpdb->prefix . 'wpwa_archived_orders';
-                // Check if table exists before updating
                 if ($wpdb->get_var("SHOW TABLES LIKE '{$table}'") == $table) {
                     $wpdb->update(
                         $table,
@@ -246,7 +260,6 @@ function wpwa_paddle_log_access_grant($weebly_user_id, $weebly_site_id, $product
     
     $table = $wpdb->prefix . 'wpwa_paddle_access_log';
     
-    // Check if table exists
     if ($wpdb->get_var("SHOW TABLES LIKE '{$table}'") != $table) {
         return;
     }
@@ -273,6 +286,9 @@ function wpwa_paddle_get_user_access_summary($weebly_user_id, $product_id, $site
         'paddle_purchase' => '💳 Purchased (Paddle)',
         'woocommerce_lifetime' => '⭐ Lifetime Access (Legacy WC)'
     );
+    
+    // Hook: Allow extensions to add custom source labels
+    $labels = apply_filters('wpwa_access_source_labels', $labels);
     
     return $labels[$access['source']] ?? 'Unknown';
 }
