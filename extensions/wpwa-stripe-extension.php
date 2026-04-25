@@ -70,7 +70,10 @@ class WPWA_Stripe_Extension {
                 'metadata' => array(
                     'internal_txn_id' => $transaction['paddle_transaction_id'],
                     'weebly_user_id'  => $transaction['weebly_user_id'],
+                    'weebly_site_id'  => $transaction['weebly_site_id'] ?? '',
                     'product_id'      => $transaction['product_id'],
+                    'access_token'    => $transaction['access_token'],
+                    'final_url'       => $transaction['final_url'],
                     'gateway'         => 'stripe'
                 )
             );
@@ -78,14 +81,6 @@ class WPWA_Stripe_Extension {
             $response = $this->stripe_api_request('checkout/sessions', 'POST', $session_data, $api_key);
 
             if ($response && isset($response['url'])) {
-                // Update the existing record to note that Stripe was initiated
-                global $wpdb;
-                $wpdb->update(
-                    $wpdb->prefix . 'wpwa_paddle_transactions',
-                    array('paddle_customer_id' => $response['customer'] ?? ''),
-                    array('paddle_transaction_id' => $transaction['paddle_transaction_id'])
-                );
-                
                 return $response['url'];
             }
 
@@ -183,65 +178,67 @@ class WPWA_Stripe_Extension {
     }
     
     public function check_stripe_access($result, $weebly_user_id, $product_id, $site_id) {
-        if ($result !== null) return $result; // Already handled
-        
+        // If access was already granted by a previous filter (like Whitelist), stop here.
+        if ($result !== null && isset($result['has_access']) && $result['has_access'] === true) {
+            return $result;
+        }
+
         global $wpdb;
-        $table = $wpdb->prefix . 'wpwa_paddle_transactions';
-        
-        // Check for completed Stripe transaction (identified by stripe_ prefix)
+        $table_txns = $wpdb->prefix . 'wpwa_paddle_transactions';
+        $table_subs = $wpdb->prefix . 'wpwa_paddle_subscriptions';
+
+        // 1. Check for ANY completed One-Time Purchase
         $transaction = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM `{$table}` 
-             WHERE weebly_user_id = %s
-             AND weebly_site_id = %s 
-             AND product_id = %d 
-             AND paddle_transaction_id LIKE 'stripe_%'
-             AND status = 'completed' 
-             ORDER BY created_at DESC 
-             LIMIT 1",
+            "SELECT id, created_at, amount FROM `{$table_txns}` 
+            WHERE weebly_user_id = %s
+            AND weebly_site_id = %s 
+            AND product_id = %d 
+            AND status = 'completed' 
+            ORDER BY created_at DESC 
+            LIMIT 1",
             $weebly_user_id,
             $site_id,
             $product_id
         ), ARRAY_A);
-        
+
         if ($transaction) {
             return array(
                 'has_access' => true,
-                'source' => 'stripe_purchase',
-                'details' => array(
+                'source'     => 'payment_gateway_purchase', // Generic label
+                'details'    => array(
                     'transaction_id' => $transaction['id'],
-                    'purchase_date' => $transaction['created_at'],
-                    'amount' => $transaction['amount']
+                    'purchase_date'  => $transaction['created_at']
                 )
             );
         }
-        
-        // Check for active Stripe subscription
-        $sub_table = $wpdb->prefix . 'wpwa_paddle_subscriptions';
+
+        // 2. Check for ANY active Subscription
         $subscription = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM `{$sub_table}` 
-             WHERE weebly_user_id = %s
-             AND weebly_site_id = %s 
-             AND product_id = %d 
-             AND paddle_subscription_id LIKE 'stripe_%'
-             AND status IN ('active', 'trialing') 
-             AND current_period_end > NOW()",
+            "SELECT paddle_subscription_id, current_period_end FROM `{$table_subs}` 
+            WHERE weebly_user_id = %s
+            AND weebly_site_id = %s 
+            AND product_id = %d 
+            AND status IN ('active', 'trialing') 
+            AND current_period_end > NOW()
+            ORDER BY current_period_end DESC
+            LIMIT 1",
             $weebly_user_id,
             $site_id,
             $product_id
         ), ARRAY_A);
-        
+
         if ($subscription) {
             return array(
                 'has_access' => true,
-                'source' => 'stripe_subscription',
-                'details' => array(
-                    'subscription_id' => $subscription['paddle_subscription_id'],
+                'source'     => 'payment_gateway_subscription', // Generic label
+                'details'    => array(
+                    'subscription_id'    => $subscription['paddle_subscription_id'],
                     'current_period_end' => $subscription['current_period_end']
                 )
             );
         }
-        
-        return null; // Let other checks continue
+
+        return null; // No valid payment found
     }
     
     public function update_stripe_token($handled, $weebly_user_id, $weebly_site_id, $product_id, $encrypted_token, $source) {
@@ -381,24 +378,30 @@ class WPWA_Stripe_Extension {
     
     private function handle_checkout_completed($session) {
         global $wpdb;
-        
         $metadata = $session['metadata'] ?? array();
-        $session_id = $session['id'];
-        
         $table = $wpdb->prefix . 'wpwa_paddle_transactions';
+
+        $internal_id = $metadata['internal_txn_id'] ?? '';
         
-        // Update transaction status
+        // We update the existing 'pending' record created by phase-one
         $wpdb->update(
             $table,
-            array('status' => 'completed'),
-            array('paddle_transaction_id' => 'stripe_' . $session_id)
+            array(
+                'status' => 'completed', 
+                'paddle_customer_id' => $session['customer'] ?? '',
+                'amount' => ($session['amount_total'] / 100), // Stripe gives cents, we store dollars
+                'currency' => strtoupper($session['currency'] ?? 'USD')
+            ),
+            array('paddle_transaction_id' => $internal_id)
         );
-        
-        // If subscription, create subscription record
+
         if ($session['mode'] === 'subscription' && !empty($session['subscription'])) {
             $this->create_subscription_record($session);
         }
-        
+
+        if ($internal_id) {
+            wpwa_paddle_send_confirmation_email($internal_id);
+        }
     }
     
     private function handle_payment_succeeded($payment_intent) {
@@ -415,30 +418,24 @@ class WPWA_Stripe_Extension {
     
     private function create_subscription_record($session) {
         global $wpdb;
-        $table = $wpdb->prefix . 'wpwa_paddle_subscriptions';
-        
         $metadata = $session['metadata'];
-        $subscription_id = $session['subscription'];
+        $sub_id = $session['subscription'];
         
-        // Fetch subscription details from Stripe
         $api_key = $this->get_secret_key();
-        $sub = $this->stripe_api_request("subscriptions/{$subscription_id}", 'GET', null, $api_key);
+        $sub = $this->stripe_api_request("subscriptions/{$sub_id}", 'GET', null, $api_key);
         
         if (!$sub) return;
-        
-        $wpdb->insert($table, array(
-            'paddle_subscription_id' => 'stripe_' . $subscription_id,
-            'paddle_customer_id' => $sub['customer'] ?? '',
-            'weebly_user_id' => $metadata['weebly_user_id'],
-            'weebly_site_id' => $metadata['weebly_site_id'] ?? '',
-            'product_id' => $metadata['product_id'],
-            'paddle_price_id' => $sub['items']['data'][0]['price']['id'] ?? '',
-            'status' => $sub['status'],
-            'current_period_start' => date('Y-m-d H:i:s', $sub['current_period_start']),
-            'current_period_end' => date('Y-m-d H:i:s', $sub['current_period_end']),
-            'access_token' => $metadata['access_token'],
-            'metadata' => json_encode(array('gateway' => 'stripe')),
-            'created_at' => current_time('mysql')
+
+        $wpdb->insert($wpdb->prefix . 'wpwa_paddle_subscriptions', array(
+            'paddle_subscription_id' => 'stripe_' . $sub_id,
+            'paddle_customer_id'     => $sub['customer'],
+            'weebly_user_id'         => $metadata['weebly_user_id'],
+            'weebly_site_id'         => $metadata['weebly_site_id'],
+            'product_id'             => $metadata['product_id'],
+            'status'                 => $sub['status'],
+            'current_period_end'     => date('Y-m-d H:i:s', $sub['current_period_end']),
+            'access_token'           => $metadata['access_token'], // Store encrypted
+            'created_at'             => current_time('mysql')
         ));
     }
     
