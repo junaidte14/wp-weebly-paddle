@@ -55,8 +55,8 @@ require_once WPWA_PADDLE_DIR . '/emails/confirmation.php';
 // Payment flow
 require_once WPWA_PADDLE_DIR . '/payments/phase-one.php';
 
-// Extensions
-require_once WPWA_PADDLE_DIR . '/extensions/wpwa-stripe-extension.php';
+// Extensions (we are not using it for now intentionally)
+//require_once WPWA_PADDLE_DIR . '/extensions/wpwa-stripe-extension.php';
 
 register_activation_hook(__FILE__, 'wpwa_paddle_activate');
 register_deactivation_hook(__FILE__, 'wpwa_paddle_deactivate');
