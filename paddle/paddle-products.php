@@ -140,7 +140,7 @@ function wpwa_paddle_get_or_sync_product($product_id) {
         return null;
     }
     
-    $needs_resync = get_post_meta($product_id, '_wpwa_paddle_needs_resync', true);
+    /* $needs_resync = get_post_meta($product_id, '_wpwa_paddle_needs_resync', true);
     
     if (!$product['paddle_product_id'] || $needs_resync) {
         $result = wpwa_paddle_sync_product_to_paddle($product_id);
@@ -151,7 +151,7 @@ function wpwa_paddle_get_or_sync_product($product_id) {
         }
         
         $product = wpwa_paddle_get_product($product_id);
-    }
+    } */
     
     return $product;
 }
